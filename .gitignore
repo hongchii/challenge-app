@@ -62,3 +62,16 @@ local.properties
 *.p12
 *.p8
 *.json.key
+# Android signing keys
+android/key.properties
+android/app/challenge-key.jks
+*.jks
+*.keystore
+
+# Documentation and setup files (local development only)
+*.md
+!README.md
+*.txt
+!windows/**/*.txt
+*.bat
+*.ps1

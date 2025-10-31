@@ -60,7 +60,8 @@ class AuthProvider with ChangeNotifier {
       notifyListeners();
       return user != null;
     } catch (e) {
-      _error = e.toString();
+      // String으로 throw된 경우 직접 사용, 그 외의 경우 toString() 사용
+      _error = e is String ? e : e.toString();
       _isLoading = false;
       notifyListeners();
       return false;
@@ -86,7 +87,8 @@ class AuthProvider with ChangeNotifier {
       notifyListeners();
       return user != null;
     } catch (e) {
-      _error = e.toString();
+      // String으로 throw된 경우 직접 사용, 그 외의 경우 toString() 사용
+      _error = e is String ? e : e.toString();
       _isLoading = false;
       notifyListeners();
       return false;
@@ -112,7 +114,8 @@ class AuthProvider with ChangeNotifier {
       notifyListeners();
       return true;
     } catch (e) {
-      _error = e.toString();
+      // String으로 throw된 경우 직접 사용, 그 외의 경우 toString() 사용
+      _error = e is String ? e : e.toString();
       _isLoading = false;
       notifyListeners();
       return false;
@@ -130,7 +133,8 @@ class AuthProvider with ChangeNotifier {
       notifyListeners();
       return true;
     } catch (e) {
-      _error = e.toString();
+      // String으로 throw된 경우 직접 사용, 그 외의 경우 toString() 사용
+      _error = e is String ? e : e.toString();
       _isLoading = false;
       notifyListeners();
       return false;

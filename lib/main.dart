@@ -10,7 +10,7 @@ import 'screens/main/main_navigation.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   
-  // Firebase 초기화
+  // Firebase 초기화 (Mock 모드 지원)
   try {
     await Firebase.initializeApp(
       options: DefaultFirebaseOptions.currentPlatform,
@@ -18,6 +18,7 @@ void main() async {
     print('✅ Firebase 초기화 성공!');
   } catch (e) {
     print('❌ Firebase 초기화 실패: $e');
+    print('⚠️ Mock 모드로 실행됩니다. UI만 테스트 가능합니다.');
   }
   
   runApp(const MyApp());

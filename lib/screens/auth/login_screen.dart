@@ -35,15 +35,51 @@ class _LoginScreenState extends State<LoginScreen> {
       if (!success && mounted) {
         final errorMessage = authProvider.error ?? '';
         
-        // 가입되지 않은 이메일인 경우
-        if (errorMessage.contains('user-not-found') || 
+        // invalid-credential 에러 (최신 Firebase에서 wrong-password/user-not-found 대체)
+        if (errorMessage.contains('invalid-credential') ||
+            errorMessage.contains('incorrect') ||
+            errorMessage.contains('malformed') ||
+            errorMessage.contains('expired') ||
+            errorMessage.contains('credential')) {
+          // 보안상 이유로 구체적인 정보를 제공하지 않으므로 일반적인 메시지 표시
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('이메일 또는 비밀번호가 올바르지 않습니다.'),
+              backgroundColor: Color(0xFFFF5247),
+            ),
+          );
+        }
+        // 잘못된 비밀번호인 경우 (구버전 Firebase)
+        else if (errorMessage.contains('wrong-password') || 
+            errorMessage.contains('잘못된 비밀번호입니다')) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('잘못된 비밀번호입니다.'),
+              backgroundColor: Color(0xFFFF5247),
+            ),
+          );
+        }
+        // 가입되지 않은 이메일인 경우 (구버전 Firebase)
+        else if (errorMessage.contains('user-not-found') || 
             errorMessage.contains('no user record') ||
-            errorMessage.contains('There is no user')) {
+            errorMessage.contains('There is no user') ||
+            errorMessage.contains('사용자를 찾을 수 없습니다')) {
           _showSignupDialog();
-        } else {
+        } 
+        // 기타 오류 - 에러 코드 제거하고 메시지만 표시
+        else {
+          // 에러 메시지에서 [코드] 부분 제거
+          String displayMessage = errorMessage;
+          if (displayMessage.startsWith('[') && displayMessage.contains(']')) {
+            final endIndex = displayMessage.indexOf(']');
+            if (endIndex != -1 && endIndex < displayMessage.length - 1) {
+              displayMessage = displayMessage.substring(endIndex + 1).trim();
+            }
+          }
+          
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text(errorMessage.isEmpty ? '로그인에 실패했습니다.' : errorMessage),
+              content: Text(displayMessage.isEmpty ? '로그인에 실패했습니다.' : displayMessage),
               backgroundColor: const Color(0xFFFF5247),
             ),
           );
