@@ -1,27 +1,24 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-// import 'package:firebase_core/firebase_core.dart';
-// import 'firebase_options.dart';
+import 'package:firebase_core/firebase_core.dart';
+import 'firebase_options.dart';
 import 'providers/challenge_provider.dart';
-// import 'providers/auth_provider.dart';
-import 'providers/auth_provider_mock.dart'; // 임시 Mock Provider
-// import 'screens/auth/login_screen.dart';
+import 'providers/auth_provider.dart';
+import 'screens/auth/login_screen.dart';
 import 'screens/main/main_navigation.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   
-  // Firebase 설정이 완료되면 아래 주석을 해제하세요
-  /*
+  // Firebase 초기화
   try {
     await Firebase.initializeApp(
       options: DefaultFirebaseOptions.currentPlatform,
     );
+    print('✅ Firebase 초기화 성공!');
   } catch (e) {
-    print('Firebase initialization failed: $e');
-    print('Firebase 설정이 필요합니다. firebase_options.dart를 확인하세요.');
+    print('❌ Firebase 초기화 실패: $e');
   }
-  */
   
   runApp(const MyApp());
 }
@@ -33,10 +30,10 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
         return MultiProvider(
           providers: [
-            ChangeNotifierProvider(create: (_) => AuthProviderMock()), // Mock Provider 사용
+            ChangeNotifierProvider(create: (_) => AuthProvider()),
             ChangeNotifierProvider(create: (_) => ChallengeProvider()..loadChallenges()),
           ],
-          child: Consumer<AuthProviderMock>(
+          child: Consumer<AuthProvider>(
             builder: (context, authProvider, _) {
           return MaterialApp(
             title: '챌린지',
@@ -120,12 +117,10 @@ class MyApp extends StatelessWidget {
             elevation: 2,
           ),
             ),
-              // Firebase 없이 테스트할 때는 바로 메인 화면으로
-              home: const MainNavigation(),
-              // Firebase 설정 후에는 아래 코드 사용:
-              // home: authProvider.isAuthenticated
-              //     ? const MainNavigation()
-              //     : const LoginScreen(),
+              // 인증 상태에 따라 화면 전환
+              home: authProvider.isAuthenticated
+                  ? const MainNavigation()
+                  : const LoginScreen(),
             debugShowCheckedModeBanner: false,
           );
         },

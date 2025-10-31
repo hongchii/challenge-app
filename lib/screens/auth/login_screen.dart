@@ -33,14 +33,68 @@ class _LoginScreenState extends State<LoginScreen> {
       );
 
       if (!success && mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(authProvider.error ?? '로그인에 실패했습니다.'),
-            backgroundColor: const Color(0xFFFF5247),
-          ),
-        );
+        final errorMessage = authProvider.error ?? '';
+        
+        // 가입되지 않은 이메일인 경우
+        if (errorMessage.contains('user-not-found') || 
+            errorMessage.contains('no user record') ||
+            errorMessage.contains('There is no user')) {
+          _showSignupDialog();
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(errorMessage.isEmpty ? '로그인에 실패했습니다.' : errorMessage),
+              backgroundColor: const Color(0xFFFF5247),
+            ),
+          );
+        }
       }
     }
+  }
+
+  void _showSignupDialog() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20),
+        ),
+        title: const Text(
+          '가입되지 않은 이메일',
+          style: TextStyle(fontWeight: FontWeight.bold),
+        ),
+        content: const Text('아직 가입하지 않은 이메일입니다.\n회원가입을 진행하시겠습니까?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            style: TextButton.styleFrom(
+              foregroundColor: const Color(0xFF8B95A1),
+            ),
+            child: const Text('취소'),
+          ),
+          TextButton(
+            onPressed: () {
+              Navigator.pop(context);
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => SignUpScreen(
+                    initialEmail: _emailController.text.trim(),
+                  ),
+                ),
+              );
+            },
+            style: TextButton.styleFrom(
+              foregroundColor: const Color(0xFF3182F6),
+            ),
+            child: const Text(
+              '회원가입',
+              style: TextStyle(fontWeight: FontWeight.w600),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   @override

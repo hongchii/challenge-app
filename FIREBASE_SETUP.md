@@ -2,6 +2,22 @@
 
 챌린지 앱을 실행하기 위해서는 Firebase 프로젝트 설정이 필요합니다.
 
+## ⚠️ 다른 컴퓨터에서 클론한 경우
+
+이 저장소는 보안상의 이유로 Firebase 설정 파일들이 `.gitignore`에 포함되어 있습니다:
+- `android/app/google-services.json` ⚠️ API 키 포함
+- `lib/firebase_options.dart` ⚠️ API 키 포함
+- `firebase.json`
+
+**다른 컴퓨터에서 작업하려면:**
+
+1. **방법 1 (권장)**: `flutterfire configure` 명령어로 자동 생성
+   - 아래 "5. FlutterFire 설정" 섹션 참조
+   - 가장 간단하고 안전한 방법입니다
+
+2. **방법 2**: Firebase Console에서 수동 다운로드
+   - 아래 각 플랫폼별 설정 섹션 참조
+
 ## 1. Firebase 프로젝트 생성
 
 1. [Firebase Console](https://console.firebase.google.com/)에 접속

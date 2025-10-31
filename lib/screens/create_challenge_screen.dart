@@ -14,23 +14,25 @@ class CreateChallengeScreen extends StatefulWidget {
 }
 
 class _CreateChallengeScreenState extends State<CreateChallengeScreen> {
-  final _formKey = GlobalKey<FormState>();
+  final _formKey1 = GlobalKey<FormState>();
+  final _formKey2 = GlobalKey<FormState>();
+  final _pageController = PageController();
+  
   final _titleController = TextEditingController();
   final _descriptionController = TextEditingController();
   final _rulesController = TextEditingController();
   final _penaltyController = TextEditingController();
   final _penaltyValueController = TextEditingController();
-  final _leaderNameController = TextEditingController();
   final _frequencyCountController = TextEditingController(text: '1');
   final _maxParticipantsController = TextEditingController();
 
+  int _currentPage = 0;
   DateTime _startDate = DateTime.now();
   DateTime _endDate = DateTime.now().add(const Duration(days: 30));
   bool _isEndDateUndecided = false;
   ChallengeFrequency _frequency = ChallengeFrequency.daily;
   PenaltyType _penaltyType = PenaltyType.none;
-  bool _isPrivate = false;
-  bool _hasMaxParticipants = false;
+  // bool _hasMaxParticipants = false; // TODO: 나중에 최대 정원 설정 기능 추가 시 사용
 
   @override
   void dispose() {
@@ -39,9 +41,9 @@ class _CreateChallengeScreenState extends State<CreateChallengeScreen> {
     _rulesController.dispose();
     _penaltyController.dispose();
     _penaltyValueController.dispose();
-    _leaderNameController.dispose();
     _frequencyCountController.dispose();
     _maxParticipantsController.dispose();
+    _pageController.dispose();
     super.dispose();
   }
 
@@ -66,8 +68,24 @@ class _CreateChallengeScreenState extends State<CreateChallengeScreen> {
     }
   }
 
+  void _nextPage() {
+    if (_formKey1.currentState!.validate()) {
+      _pageController.nextPage(
+        duration: const Duration(milliseconds: 300),
+        curve: Curves.easeInOut,
+      );
+    }
+  }
+
+  void _previousPage() {
+    _pageController.previousPage(
+      duration: const Duration(milliseconds: 300),
+      curve: Curves.easeInOut,
+    );
+  }
+
   Future<void> _createChallenge() async {
-    if (_formKey.currentState!.validate()) {
+    if (_formKey2.currentState!.validate()) {
       final uuid = const Uuid();
       final authProvider = Provider.of<AuthProvider>(context, listen: false);
       final firestoreService = FirestoreService();
@@ -103,10 +121,8 @@ class _CreateChallengeScreenState extends State<CreateChallengeScreen> {
         penaltyValue: _penaltyType == PenaltyType.none 
             ? 0.0 
             : double.parse(_penaltyValueController.text),
-        isPrivate: _isPrivate,
-        maxParticipants: _hasMaxParticipants 
-            ? int.parse(_maxParticipantsController.text)
-            : null,
+        isPrivate: false, // TODO: 나중에 비밀 챌린지 기능 활성화 시 사용
+        maxParticipants: null, // TODO: 나중에 최대 정원 설정 기능 활성화 시 사용
         creatorId: currentUser.id,
         participantIds: [currentUser.id],
         members: [leader],
@@ -141,393 +157,485 @@ class _CreateChallengeScreenState extends State<CreateChallengeScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('새 챌린지 만들기'),
+        title: Text(_currentPage == 0 ? '새 챌린지 만들기 (1/2)' : '새 챌린지 만들기 (2/2)'),
       ),
-      body: Form(
-        key: _formKey,
-        child: ListView(
-          padding: const EdgeInsets.all(16),
-          children: [
-            _buildSectionTitle('기본 정보'),
-            TextFormField(
-              controller: _titleController,
-              decoration: const InputDecoration(
-                labelText: '챌린지 제목',
-                hintText: '예: 무지출 챌린지',
-                border: OutlineInputBorder(),
-                prefixIcon: Icon(Icons.title),
-              ),
-              validator: (value) {
-                if (value == null || value.isEmpty) {
-                  return '제목을 입력해주세요';
-                }
-                return null;
-              },
-            ),
-            const SizedBox(height: 16),
-            TextFormField(
-              controller: _descriptionController,
-              decoration: const InputDecoration(
-                labelText: '설명',
-                hintText: '챌린지에 대한 간단한 설명',
-                border: OutlineInputBorder(),
-                prefixIcon: Icon(Icons.description),
-              ),
-              maxLines: 2,
-              validator: (value) {
-                if (value == null || value.isEmpty) {
-                  return '설명을 입력해주세요';
-                }
-                return null;
-              },
-            ),
-            const SizedBox(height: 16),
-            TextFormField(
-              controller: _rulesController,
-              decoration: const InputDecoration(
-                labelText: '규칙',
-                hintText: '챌린지 규칙을 자세히 적어주세요',
-                border: OutlineInputBorder(),
-                prefixIcon: Icon(Icons.rule),
-              ),
-              maxLines: 3,
-              validator: (value) {
-                if (value == null || value.isEmpty) {
-                  return '규칙을 입력해주세요';
-                }
-                return null;
-              },
-            ),
-            const SizedBox(height: 24),
-            _buildSectionTitle('기간 설정'),
-            Row(
+      body: Column(
+        children: [
+          // 진행 표시 인디케이터
+          Container(
+            padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 20),
+            child: Row(
               children: [
                 Expanded(
-                  child: _DateSelector(
-                    label: '시작일',
-                    date: _startDate,
-                    onTap: () => _selectDate(context, true),
+                  child: Container(
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF3182F6),
+                      borderRadius: BorderRadius.circular(2),
+                    ),
                   ),
                 ),
-                const SizedBox(width: 16),
+                const SizedBox(width: 8),
                 Expanded(
-                  child: _DateSelector(
-                    label: '종료일',
-                    date: _endDate,
-                    onTap: _isEndDateUndecided ? null : () => _selectDate(context, false),
-                    isDisabled: _isEndDateUndecided,
+                  child: Container(
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: _currentPage == 1 
+                          ? const Color(0xFF3182F6) 
+                          : const Color(0xFFE5E8EB),
+                      borderRadius: BorderRadius.circular(2),
+                    ),
                   ),
                 ),
               ],
             ),
-            const SizedBox(height: 8),
-            CheckboxListTile(
-              value: _isEndDateUndecided,
-              onChanged: (value) {
+          ),
+          
+          // 페이지 뷰
+          Expanded(
+            child: PageView(
+              controller: _pageController,
+              physics: const NeverScrollableScrollPhysics(),
+              onPageChanged: (page) {
                 setState(() {
-                  _isEndDateUndecided = value ?? false;
+                  _currentPage = page;
                 });
               },
-              title: const Text(
-                '종료일 미정',
-                style: TextStyle(fontSize: 15),
-              ),
-              contentPadding: EdgeInsets.zero,
-              controlAffinity: ListTileControlAffinity.leading,
-              activeColor: const Color(0xFF3182F6),
-            ),
-            const SizedBox(height: 24),
-            _buildSectionTitle('인증 빈도'),
-            DropdownButtonFormField<ChallengeFrequency>(
-              initialValue: _frequency,
-              decoration: const InputDecoration(
-                border: OutlineInputBorder(),
-                prefixIcon: Icon(Icons.repeat),
-              ),
-              items: const [
-                DropdownMenuItem(
-                  value: ChallengeFrequency.daily,
-                  child: Text('매일'),
-                ),
-                DropdownMenuItem(
-                  value: ChallengeFrequency.weekly,
-                  child: Text('주 n회'),
-                ),
-                DropdownMenuItem(
-                  value: ChallengeFrequency.monthly,
-                  child: Text('월 n회'),
-                ),
-              ],
-              onChanged: (value) {
-                setState(() {
-                  _frequency = value!;
-                });
-              },
-            ),
-            if (_frequency != ChallengeFrequency.daily) ...[
-              const SizedBox(height: 16),
-              TextFormField(
-                controller: _frequencyCountController,
-                decoration: InputDecoration(
-                  labelText: _frequency == ChallengeFrequency.weekly
-                      ? '주당 횟수'
-                      : '월당 횟수',
-                  border: const OutlineInputBorder(),
-                  prefixIcon: const Icon(Icons.numbers),
-                ),
-                keyboardType: TextInputType.number,
-                validator: (value) {
-                  if (value == null || value.isEmpty) {
-                    return '횟수를 입력해주세요';
-                  }
-                  final num = int.tryParse(value);
-                  if (num == null || num < 1) {
-                    return '1 이상의 숫자를 입력해주세요';
-                  }
-                  return null;
-                },
-              ),
-            ],
-            const SizedBox(height: 24),
-            _buildSectionTitle('벌금 설정'),
-            TextFormField(
-              controller: _penaltyController,
-              decoration: const InputDecoration(
-                labelText: '1회 실패당 벌금 (원)',
-                hintText: '10000',
-                border: OutlineInputBorder(),
-                prefixIcon: Icon(Icons.attach_money),
-              ),
-              keyboardType: TextInputType.number,
-              validator: (value) {
-                if (value == null || value.isEmpty) {
-                  return '벌금을 입력해주세요';
-                }
-                final num = double.tryParse(value);
-                if (num == null || num < 0) {
-                  return '올바른 금액을 입력해주세요';
-                }
-                return null;
-              },
-            ),
-            const SizedBox(height: 16),
-            const Text(
-              '추가 벌금',
-              style: TextStyle(
-                fontSize: 15,
-                fontWeight: FontWeight.w600,
-                color: Color(0xFF4E5968),
-              ),
-            ),
-            const SizedBox(height: 12),
-            Wrap(
-              spacing: 8,
-              runSpacing: 8,
               children: [
-                _PenaltyTypeChip(
-                  label: '없음',
-                  isSelected: _penaltyType == PenaltyType.none,
-                  onTap: () {
-                    setState(() {
-                      _penaltyType = PenaltyType.none;
-                    });
-                  },
-                ),
-                _PenaltyTypeChip(
-                  label: '이자율 (%)',
-                  isSelected: _penaltyType == PenaltyType.percentage,
-                  onTap: () {
-                    setState(() {
-                      _penaltyType = PenaltyType.percentage;
-                    });
-                  },
-                ),
-                _PenaltyTypeChip(
-                  label: '고정 금액 (+원)',
-                  isSelected: _penaltyType == PenaltyType.fixedAmount,
-                  onTap: () {
-                    setState(() {
-                      _penaltyType = PenaltyType.fixedAmount;
-                    });
-                  },
+                _buildStep1(),
+                _buildStep2(),
+              ],
+            ),
+          ),
+          
+          // 하단 버튼
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.05),
+                  blurRadius: 10,
+                  offset: const Offset(0, -5),
                 ),
               ],
             ),
-            if (_penaltyType != PenaltyType.none) ...[
-              const SizedBox(height: 16),
-              TextFormField(
-                controller: _penaltyValueController,
-                decoration: InputDecoration(
-                  labelText: _penaltyType == PenaltyType.percentage 
-                      ? '이자율 (%)' 
-                      : '추가 금액 (원)',
-                  hintText: _penaltyType == PenaltyType.percentage 
-                      ? '10' 
-                      : '5000',
-                  border: const OutlineInputBorder(),
-                  prefixIcon: Icon(
-                    _penaltyType == PenaltyType.percentage 
-                        ? Icons.percent 
-                        : Icons.add,
+            child: SafeArea(
+              child: Row(
+                children: [
+                  if (_currentPage == 1) ...[
+                    Expanded(
+                      child: OutlinedButton(
+                        onPressed: _previousPage,
+                        style: OutlinedButton.styleFrom(
+                          minimumSize: const Size(double.infinity, 56),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          side: const BorderSide(color: Color(0xFF3182F6)),
+                        ),
+                        child: const Text('이전'),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                  ],
+                  Expanded(
+                    flex: _currentPage == 0 ? 1 : 1,
+                    child: ElevatedButton(
+                      onPressed: _currentPage == 0 ? _nextPage : _createChallenge,
+                      child: Text(_currentPage == 0 ? '다음' : '챌린지 만들기'),
+                    ),
                   ),
-                ),
-                keyboardType: TextInputType.number,
-                validator: (value) {
-                  if (_penaltyType == PenaltyType.none) return null;
-                  if (value == null || value.isEmpty) {
-                    return '값을 입력해주세요';
-                  }
-                  final num = double.tryParse(value);
-                  if (num == null || num < 0) {
-                    return '0 이상의 숫자를 입력해주세요';
-                  }
-                  return null;
-                },
+                ],
               ),
-            ],
-            const SizedBox(height: 24),
-            _buildSectionTitle('챌린지 설정'),
-            
-            // 공개/비밀 선택
-            CheckboxListTile(
-              value: _isPrivate,
-              onChanged: (value) {
-                setState(() {
-                  _isPrivate = value ?? false;
-                });
-              },
-              title: const Text(
-                '비밀 챌린지',
-                style: TextStyle(fontSize: 15),
-              ),
-              subtitle: const Text(
-                '승인된 사람만 참여할 수 있습니다',
-                style: TextStyle(fontSize: 13, color: Color(0xFF8B95A1)),
-              ),
-              contentPadding: EdgeInsets.zero,
-              controlAffinity: ListTileControlAffinity.leading,
-              activeColor: const Color(0xFF3182F6),
             ),
-            
-            // 최대 정원 설정
-            CheckboxListTile(
-              value: _hasMaxParticipants,
-              onChanged: (value) {
-                setState(() {
-                  _hasMaxParticipants = value ?? false;
-                  if (!_hasMaxParticipants) {
-                    _maxParticipantsController.clear();
-                  }
-                });
-              },
-              title: const Text(
-                '최대 정원 설정',
-                style: TextStyle(fontSize: 15),
-              ),
-              contentPadding: EdgeInsets.zero,
-              controlAffinity: ListTileControlAffinity.leading,
-              activeColor: const Color(0xFF3182F6),
-            ),
-            
-            if (_hasMaxParticipants) ...[
-              const SizedBox(height: 8),
-              TextFormField(
-                controller: _maxParticipantsController,
-                decoration: const InputDecoration(
-                  labelText: '최대 참가 인원',
-                  hintText: '10',
-                  border: OutlineInputBorder(),
-                  prefixIcon: Icon(Icons.people),
-                  suffixText: '명',
-                ),
-                keyboardType: TextInputType.number,
-                validator: (value) {
-                  if (_hasMaxParticipants) {
-                    if (value == null || value.isEmpty) {
-                      return '최대 인원을 입력해주세요';
-                    }
-                    final num = int.tryParse(value);
-                    if (num == null || num < 2) {
-                      return '2명 이상이어야 합니다';
-                    }
-                  }
-                  return null;
-                },
-              ),
-            ],
-                const SizedBox(height: 32),
-            ElevatedButton(
-              onPressed: _createChallenge,
-              child: const Text('챌린지 만들기'),
-            ),
-            const SizedBox(height: 16),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
 
-  Widget _buildSectionTitle(String title) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
-      child: Text(
-        title,
-        style: const TextStyle(
-          fontSize: 17,
-          fontWeight: FontWeight.bold,
-          color: Color(0xFF191F28),
-        ),
+  // Step 1: 기본 정보
+  Widget _buildStep1() {
+    return Form(
+      key: _formKey1,
+      child: ListView(
+        padding: const EdgeInsets.all(20),
+        children: [
+          const Text(
+            '기본 정보',
+            style: TextStyle(
+              fontSize: 20,
+              fontWeight: FontWeight.bold,
+              color: Color(0xFF191F28),
+            ),
+          ),
+          const SizedBox(height: 8),
+          const Text(
+            '챌린지의 기본 정보를 입력해주세요',
+            style: TextStyle(
+              fontSize: 14,
+              color: Color(0xFF8B95A1),
+            ),
+          ),
+          const SizedBox(height: 32),
+          
+          // 챌린지 제목
+          const Text(
+            '챌린지 제목',
+            style: TextStyle(
+              fontSize: 15,
+              fontWeight: FontWeight.w600,
+              color: Color(0xFF191F28),
+            ),
+          ),
+          const SizedBox(height: 8),
+          TextFormField(
+            controller: _titleController,
+            decoration: const InputDecoration(
+              hintText: '예: 무지출 챌린지',
+              border: OutlineInputBorder(),
+              contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+            ),
+            style: const TextStyle(fontSize: 16),
+            validator: (value) {
+              if (value == null || value.isEmpty) {
+                return '제목을 입력해주세요';
+              }
+              return null;
+            },
+          ),
+          const SizedBox(height: 24),
+          
+          // 설명
+          const Text(
+            '설명',
+            style: TextStyle(
+              fontSize: 15,
+              fontWeight: FontWeight.w600,
+              color: Color(0xFF191F28),
+            ),
+          ),
+          const SizedBox(height: 8),
+          TextFormField(
+            controller: _descriptionController,
+            decoration: const InputDecoration(
+              hintText: '챌린지에 대한 간단한 설명',
+              border: OutlineInputBorder(),
+              contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+            ),
+            style: const TextStyle(fontSize: 16),
+            maxLines: 3,
+            validator: (value) {
+              if (value == null || value.isEmpty) {
+                return '설명을 입력해주세요';
+              }
+              return null;
+            },
+          ),
+          const SizedBox(height: 24),
+          
+          // 규칙
+          const Text(
+            '규칙',
+            style: TextStyle(
+              fontSize: 15,
+              fontWeight: FontWeight.w600,
+              color: Color(0xFF191F28),
+            ),
+          ),
+          const SizedBox(height: 8),
+          TextFormField(
+            controller: _rulesController,
+            decoration: const InputDecoration(
+              hintText: '챌린지 규칙을 입력하세요',
+              border: OutlineInputBorder(),
+              contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+            ),
+            style: const TextStyle(fontSize: 16),
+            maxLines: 4,
+            validator: (value) {
+              if (value == null || value.isEmpty) {
+                return '규칙을 입력해주세요';
+              }
+              return null;
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
+  // Step 2: 상세 설정
+  Widget _buildStep2() {
+    return Form(
+      key: _formKey2,
+      child: ListView(
+        padding: const EdgeInsets.all(20),
+        children: [
+          const Text(
+            '상세 설정',
+            style: TextStyle(
+              fontSize: 20,
+              fontWeight: FontWeight.bold,
+              color: Color(0xFF191F28),
+            ),
+          ),
+          const SizedBox(height: 8),
+          const Text(
+            '챌린지의 기간과 벌금을 설정해주세요',
+            style: TextStyle(
+              fontSize: 14,
+              color: Color(0xFF8B95A1),
+            ),
+          ),
+          const SizedBox(height: 32),
+          
+          // 시작일
+          const Text(
+            '시작일',
+            style: TextStyle(
+              fontSize: 15,
+              fontWeight: FontWeight.w600,
+              color: Color(0xFF191F28),
+            ),
+          ),
+          const SizedBox(height: 8),
+          _DateSelector(
+            date: _startDate,
+            onTap: () => _selectDate(context, true),
+          ),
+          const SizedBox(height: 16),
+          
+          // 종료일 미정 체크박스
+          CheckboxListTile(
+            value: _isEndDateUndecided,
+            onChanged: (value) {
+              setState(() {
+                _isEndDateUndecided = value ?? false;
+              });
+            },
+            title: const Text(
+              '종료일 미정',
+              style: TextStyle(fontSize: 15),
+            ),
+            contentPadding: EdgeInsets.zero,
+            controlAffinity: ListTileControlAffinity.leading,
+            activeColor: const Color(0xFF3182F6),
+          ),
+          
+          // 종료일
+          if (!_isEndDateUndecided) ...[
+            const SizedBox(height: 8),
+            const Text(
+              '종료일',
+              style: TextStyle(
+                fontSize: 15,
+                fontWeight: FontWeight.w600,
+                color: Color(0xFF191F28),
+              ),
+            ),
+            const SizedBox(height: 8),
+            _DateSelector(
+              date: _endDate,
+              onTap: () => _selectDate(context, false),
+            ),
+          ],
+          
+          const SizedBox(height: 24),
+          
+          // 인증 빈도
+          const Text(
+            '인증 빈도',
+            style: TextStyle(
+              fontSize: 15,
+              fontWeight: FontWeight.w600,
+              color: Color(0xFF4E5968),
+            ),
+          ),
+          const SizedBox(height: 12),
+          SegmentedButton<ChallengeFrequency>(
+            segments: const [
+              ButtonSegment(
+                value: ChallengeFrequency.daily,
+                label: Text('매일'),
+                icon: Icon(Icons.today, size: 18),
+              ),
+              ButtonSegment(
+                value: ChallengeFrequency.weekly,
+                label: Text('주간'),
+                icon: Icon(Icons.calendar_view_week, size: 18),
+              ),
+              ButtonSegment(
+                value: ChallengeFrequency.monthly,
+                label: Text('월간'),
+                icon: Icon(Icons.calendar_month, size: 18),
+              ),
+            ],
+            selected: {_frequency},
+            onSelectionChanged: (Set<ChallengeFrequency> newSelection) {
+              setState(() {
+                _frequency = newSelection.first;
+              });
+            },
+            style: ButtonStyle(
+              backgroundColor: WidgetStateProperty.resolveWith((states) {
+                if (states.contains(WidgetState.selected)) {
+                  return const Color(0xFF3182F6);
+                }
+                return Colors.white;
+              }),
+              foregroundColor: WidgetStateProperty.resolveWith((states) {
+                if (states.contains(WidgetState.selected)) {
+                  return Colors.white;
+                }
+                return const Color(0xFF4E5968);
+              }),
+              side: WidgetStateProperty.all(BorderSide.none),
+            ),
+          ),
+          
+          if (_frequency != ChallengeFrequency.daily) ...[
+            const SizedBox(height: 24),
+            Text(
+              _frequency == ChallengeFrequency.weekly ? '주 몇 회?' : '월 몇 회?',
+              style: const TextStyle(
+                fontSize: 15,
+                fontWeight: FontWeight.w600,
+                color: Color(0xFF191F28),
+              ),
+            ),
+            const SizedBox(height: 8),
+            TextFormField(
+              controller: _frequencyCountController,
+              decoration: const InputDecoration(
+                hintText: '1',
+                border: OutlineInputBorder(),
+                contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                suffixText: '회',
+              ),
+              style: const TextStyle(fontSize: 16),
+              keyboardType: TextInputType.number,
+              validator: (value) {
+                if (value == null || value.isEmpty) {
+                  return '횟수를 입력해주세요';
+                }
+                final num = int.tryParse(value);
+                if (num == null || num < 1) {
+                  return '1 이상의 숫자를 입력해주세요';
+                }
+                return null;
+              },
+            ),
+          ],
+          
+          const SizedBox(height: 24),
+          
+          // 벌금 설정
+          const Text(
+            '1회 실패당 벌금',
+            style: TextStyle(
+              fontSize: 15,
+              fontWeight: FontWeight.w600,
+              color: Color(0xFF191F28),
+            ),
+          ),
+          const SizedBox(height: 8),
+          TextFormField(
+            controller: _penaltyController,
+            decoration: const InputDecoration(
+              hintText: '10000',
+              border: OutlineInputBorder(),
+              contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+              suffixText: '원',
+            ),
+            style: const TextStyle(fontSize: 16),
+            keyboardType: TextInputType.number,
+            validator: (value) {
+              if (value == null || value.isEmpty) {
+                return '벌금을 입력해주세요';
+              }
+              final num = double.tryParse(value);
+              if (num == null || num < 0) {
+                return '올바른 금액을 입력해주세요';
+              }
+              return null;
+            },
+          ),
+          
+          // TODO: 나중에 최대 정원 설정 기능 추가
+          // const SizedBox(height: 24),
+          // 
+          // // 최대 정원 설정
+          // CheckboxListTile(
+          //   value: _hasMaxParticipants,
+          //   onChanged: (value) {
+          //     setState(() {
+          //       _hasMaxParticipants = value ?? false;
+          //       if (!_hasMaxParticipants) {
+          //         _maxParticipantsController.clear();
+          //       }
+          //     });
+          //   },
+          //   title: const Text(
+          //     '최대 정원 설정',
+          //     style: TextStyle(fontSize: 15),
+          //   ),
+          //   contentPadding: EdgeInsets.zero,
+          //   controlAffinity: ListTileControlAffinity.leading,
+          //   activeColor: const Color(0xFF3182F6),
+          // ),
+          // 
+          // if (_hasMaxParticipants) ...[
+          //   const SizedBox(height: 16),
+          //   const Text(
+          //     '최대 참가 인원',
+          //     style: TextStyle(
+          //       fontSize: 15,
+          //       fontWeight: FontWeight.w600,
+          //       color: Color(0xFF191F28),
+          //     ),
+          //   ),
+          //   const SizedBox(height: 8),
+          //   TextFormField(
+          //     controller: _maxParticipantsController,
+          //     decoration: const InputDecoration(
+          //       hintText: '10',
+          //       border: OutlineInputBorder(),
+          //       contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+          //       suffixText: '명',
+          //     ),
+          //     style: const TextStyle(fontSize: 16),
+          //     keyboardType: TextInputType.number,
+          //     validator: (value) {
+          //       if (_hasMaxParticipants) {
+          //         if (value == null || value.isEmpty) {
+          //           return '최대 인원을 입력해주세요';
+          //         }
+          //         final num = int.tryParse(value);
+          //         if (num == null || num < 2) {
+          //           return '2명 이상이어야 합니다';
+          //         }
+          //       }
+          //       return null;
+          //     },
+          //   ),
+          // ],
+          
+          const SizedBox(height: 80), // 하단 버튼 공간 확보
+        ],
       ),
     );
   }
 }
 
 class _DateSelector extends StatelessWidget {
-  final String label;
   final DateTime date;
   final VoidCallback? onTap;
-  final bool isDisabled;
 
   const _DateSelector({
-    required this.label,
     required this.date,
-    required this.onTap,
-    this.isDisabled = false,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return InkWell(
-      onTap: onTap,
-      child: InputDecorator(
-        decoration: InputDecoration(
-          labelText: label,
-          border: const OutlineInputBorder(),
-          prefixIcon: const Icon(Icons.calendar_today),
-          enabled: !isDisabled,
-        ),
-        child: Text(
-          isDisabled 
-              ? '미정' 
-              : '${date.year}.${date.month.toString().padLeft(2, '0')}.${date.day.toString().padLeft(2, '0')}',
-          style: TextStyle(
-            fontSize: 16,
-            color: isDisabled ? const Color(0xFF8B95A1) : null,
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _PenaltyTypeChip extends StatelessWidget {
-  final String label;
-  final bool isSelected;
-  final VoidCallback onTap;
-
-  const _PenaltyTypeChip({
-    required this.label,
-    required this.isSelected,
     required this.onTap,
   });
 
@@ -537,28 +645,29 @@ class _PenaltyTypeChip extends StatelessWidget {
       onTap: onTap,
       borderRadius: BorderRadius.circular(12),
       child: Container(
-        padding: const EdgeInsets.symmetric(
-          horizontal: 16,
-          vertical: 12,
-        ),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
         decoration: BoxDecoration(
-          color: isSelected ? const Color(0xFFE8F3FF) : Colors.white,
-          border: Border.all(
-            color: isSelected ? const Color(0xFF3182F6) : const Color(0xFFE5E8EB),
-            width: isSelected ? 2 : 1,
-          ),
+          border: Border.all(color: const Color(0xFFE5E8EB)),
           borderRadius: BorderRadius.circular(12),
         ),
-        child: Text(
-          label,
-          style: TextStyle(
-            fontSize: 15,
-            fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
-            color: isSelected ? const Color(0xFF3182F6) : const Color(0xFF4E5968),
-          ),
+        child: Row(
+          children: [
+            Icon(
+              Icons.calendar_today,
+              size: 20,
+              color: Colors.grey[600],
+            ),
+            const SizedBox(width: 12),
+            Text(
+              '${date.year}.${date.month.toString().padLeft(2, '0')}.${date.day.toString().padLeft(2, '0')}',
+              style: const TextStyle(
+                fontSize: 16,
+                color: Color(0xFF191F28),
+              ),
+            ),
+          ],
         ),
       ),
     );
   }
 }
-

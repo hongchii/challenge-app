@@ -201,7 +201,7 @@ class _ChallengeCard extends StatelessWidget {
                   ),
                   const SizedBox(width: 8),
                   _InfoChip(
-                    icon: Icons.attach_money,
+                    icon: Icons.payments,
                     label: '${challenge.penaltyAmount.toStringAsFixed(0)}원',
                   ),
                 ],

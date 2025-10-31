@@ -1,9 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
-// import '../../providers/auth_provider.dart';
-import '../../providers/auth_provider_mock.dart';
-// import '../../services/firestore_service.dart';
+import '../../providers/auth_provider.dart';
+import '../../services/firestore_service.dart';
 import '../../models/challenge.dart';
 import '../challenge_detail_screen.dart';
 
@@ -12,7 +11,7 @@ class MyChallengesScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final authProvider = Provider.of<AuthProviderMock>(context);
+    final authProvider = Provider.of<AuthProvider>(context);
     final userId = authProvider.userModel?.id;
 
     if (userId == null) {
@@ -21,18 +20,26 @@ class MyChallengesScreen extends StatelessWidget {
       );
     }
 
-    // Firebase 없이 테스트할 때는 빈 리스트 사용
-    final challenges = <Challenge>[];
+    final firestoreService = FirestoreService();
 
     return Scaffold(
       appBar: AppBar(
         title: const Text('내 챌린지'),
       ),
-      body: Builder(
-        builder: (context) {
-          // Firebase 설정 후에는 StreamBuilder 사용
-          // final firestoreService = FirestoreService();
-          // stream: firestoreService.myChallenges(userId),
+      body: StreamBuilder<List<Challenge>>(
+        stream: firestoreService.myChallenges(userId),
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Center(child: CircularProgressIndicator());
+          }
+
+          if (snapshot.hasError) {
+            return Center(
+              child: Text('오류가 발생했습니다: ${snapshot.error}'),
+            );
+          }
+
+          final challenges = snapshot.data ?? [];
 
           if (challenges.isEmpty) {
             return Center(
@@ -221,7 +228,7 @@ class _ChallengeCard extends StatelessWidget {
                   ),
                   const SizedBox(width: 8),
                   _InfoChip(
-                    icon: Icons.attach_money,
+                    icon: Icons.payments,
                     label: '${challenge.penaltyAmount.toStringAsFixed(0)}원',
                   ),
                 ],
