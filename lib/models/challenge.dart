@@ -1,6 +1,7 @@
 import 'member.dart';
 import 'verification.dart';
 import 'penalty.dart';
+import '../utils/text_encoding.dart';
 
 enum ChallengeFrequency {
   daily,       // 매일
@@ -33,6 +34,7 @@ class Challenge {
   final List<String> pendingParticipantIds; // 승인 대기 중인 참가자 ID
   final List<Member> members;
   final List<Verification> verifications;
+  final DateTime? createdAt; // 등록일 (최신순 정렬용)
 
   Challenge({
     required this.id,
@@ -53,10 +55,12 @@ class Challenge {
     List<String>? pendingParticipantIds,
     List<Member>? members,
     List<Verification>? verifications,
+    DateTime? createdAt,
   })  : participantIds = participantIds ?? [],
         pendingParticipantIds = pendingParticipantIds ?? [],
         members = members ?? [],
-        verifications = verifications ?? [];
+        verifications = verifications ?? [],
+        createdAt = createdAt ?? DateTime.now();
 
   // 특정 멤버의 인증 횟수 계산
   int getVerificationCount(String memberId) {
@@ -142,6 +146,7 @@ class Challenge {
     List<String>? pendingParticipantIds,
     List<Member>? members,
     List<Verification>? verifications,
+    DateTime? createdAt,
   }) {
     return Challenge(
       id: id ?? this.id,
@@ -162,6 +167,7 @@ class Challenge {
       pendingParticipantIds: pendingParticipantIds ?? this.pendingParticipantIds,
       members: members ?? this.members,
       verifications: verifications ?? this.verifications,
+      createdAt: createdAt ?? this.createdAt,
     );
   }
 
@@ -184,35 +190,50 @@ class Challenge {
         'pendingParticipantIds': pendingParticipantIds,
         'members': members.map((m) => m.toJson()).toList(),
         'verifications': verifications.map((v) => v.toJson()).toList(),
+        'createdAt': createdAt?.toIso8601String(),
       };
 
   factory Challenge.fromJson(Map<String, dynamic> json) => Challenge(
-        id: json['id'],
-        title: json['title'],
-        description: json['description'],
-        rules: json['rules'],
-        startDate: DateTime.parse(json['startDate']),
-        endDate: json['endDate'] != null ? DateTime.parse(json['endDate']) : null,
+        id: TextEncoding.safeStringFromJson(json, 'id'),
+        title: TextEncoding.safeStringFromJson(json, 'title'),
+        description: TextEncoding.safeStringFromJson(json, 'description'),
+        rules: TextEncoding.safeStringFromJson(json, 'rules'),
+        startDate: DateTime.parse(TextEncoding.safeStringFromJson(json, 'startDate')),
+        endDate: json['endDate'] != null 
+            ? DateTime.parse(TextEncoding.normalizeString(json['endDate']))
+            : null,
         frequency: ChallengeFrequency.values.firstWhere(
-          (e) => e.name == json['frequency'],
+          (e) => e.name == TextEncoding.normalizeString(json['frequency']),
         ),
-        frequencyCount: json['frequencyCount'],
-        penaltyAmount: json['penaltyAmount'],
+        frequencyCount: json['frequencyCount'] ?? 1,
+        penaltyAmount: (json['penaltyAmount'] ?? 0.0).toDouble(),
         penaltyType: json['penaltyType'] != null
-            ? PenaltyType.values.firstWhere((e) => e.name == json['penaltyType'])
+            ? PenaltyType.values.firstWhere(
+                (e) => e.name == TextEncoding.normalizeString(json['penaltyType']),
+                orElse: () => PenaltyType.none,
+              )
             : PenaltyType.none,
-        penaltyValue: json['penaltyValue'] ?? 0.0,
+        penaltyValue: (json['penaltyValue'] ?? 0.0).toDouble(),
         isPrivate: json['isPrivate'] ?? false,
         maxParticipants: json['maxParticipants'],
-        creatorId: json['creatorId'] ?? '',
-        participantIds: List<String>.from(json['participantIds'] ?? []),
-        pendingParticipantIds: List<String>.from(json['pendingParticipantIds'] ?? []),
+        creatorId: TextEncoding.safeStringFromJson(json, 'creatorId', defaultValue: ''),
+        participantIds: (json['participantIds'] as List?)
+            ?.map((e) => TextEncoding.normalizeString(e))
+            .toList()
+            .cast<String>() ?? [],
+        pendingParticipantIds: (json['pendingParticipantIds'] as List?)
+            ?.map((e) => TextEncoding.normalizeString(e))
+            .toList()
+            .cast<String>() ?? [],
         members: (json['members'] as List?)
             ?.map((m) => Member.fromJson(m))
             .toList() ?? [],
         verifications: (json['verifications'] as List?)
             ?.map((v) => Verification.fromJson(v))
             .toList() ?? [],
+        createdAt: json['createdAt'] != null 
+            ? DateTime.parse(TextEncoding.normalizeString(json['createdAt']))
+            : null,
       );
 }
 

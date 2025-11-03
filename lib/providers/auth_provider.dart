@@ -56,6 +56,11 @@ class AuthProvider with ChangeNotifier {
         profileImageUrl: profileImageUrl,
       );
 
+      if (user != null) {
+        _firebaseUser = user;
+        _userModel = await _firestoreService.getUser(user.uid);
+      }
+
       _isLoading = false;
       notifyListeners();
       return user != null;
@@ -83,6 +88,11 @@ class AuthProvider with ChangeNotifier {
         password: password,
       );
 
+      if (user != null) {
+        _firebaseUser = user;
+        _userModel = await _firestoreService.getUser(user.uid);
+      }
+
       _isLoading = false;
       notifyListeners();
       return user != null;
@@ -98,6 +108,7 @@ class AuthProvider with ChangeNotifier {
   // 로그아웃
   Future<void> signOut() async {
     await _authService.signOut();
+    _firebaseUser = null;
     _userModel = null;
     notifyListeners();
   }
@@ -143,6 +154,19 @@ class AuthProvider with ChangeNotifier {
 
   void clearError() {
     _error = null;
+    notifyListeners();
+  }
+
+  // 현재 인증 상태 확인 (스플래시 화면용)
+  Future<void> checkAuthState() async {
+    _firebaseUser = _authService.currentUser;
+    
+    if (_firebaseUser != null) {
+      _userModel = await _firestoreService.getUser(_firebaseUser!.uid);
+    } else {
+      _userModel = null;
+    }
+    
     notifyListeners();
   }
 }

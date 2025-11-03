@@ -123,8 +123,36 @@ class _ChallengeCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final dateFormat = DateFormat('yyyy.MM.dd');
-    final daysLeft = challenge.endDate?.difference(DateTime.now()).inDays;
+    final now = DateTime.now();
+    final daysLeft = challenge.endDate?.difference(now).inDays;
+    // 종료일이 없으면 시작일부터 경과한 일수 계산
+    final daysPassed = now.difference(challenge.startDate).inDays;
     final isCreator = challenge.creatorId == userId;
+
+    // 뱃지 텍스트와 색상 결정
+    String badgeText;
+    Color badgeBgColor;
+    Color badgeTextColor;
+    
+    if (challenge.endDate != null && daysLeft != null && daysLeft <= 0) {
+      // 종료됨
+      badgeText = '종료';
+      badgeBgColor = const Color(0xFFFFEBEE);
+      badgeTextColor = const Color(0xFFFF5247);
+    } else if (challenge.endDate == null) {
+      // 종료일이 없으면 경과일수 표시 (파란색)
+      badgeText = 'D+$daysPassed';
+      badgeBgColor = const Color(0xFFE8F3FF);
+      badgeTextColor = const Color(0xFF3182F6);
+    } else if (daysLeft != null && daysLeft > 0) {
+      badgeText = 'D-$daysLeft';
+      badgeBgColor = const Color(0xFFE8F3FF);
+      badgeTextColor = const Color(0xFF3182F6);
+    } else {
+      badgeText = '진행중';
+      badgeBgColor = const Color(0xFFF2F4F6);
+      badgeTextColor = const Color(0xFF4E5968);
+    }
 
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
@@ -184,23 +212,13 @@ class _ChallengeCard extends StatelessWidget {
                       vertical: 6,
                     ),
                     decoration: BoxDecoration(
-                      color: daysLeft == null
-                          ? const Color(0xFFF2F4F6)
-                          : (daysLeft > 0
-                              ? const Color(0xFFE8F3FF)
-                              : const Color(0xFFFFEBEE)),
+                      color: badgeBgColor,
                       borderRadius: BorderRadius.circular(8),
                     ),
                     child: Text(
-                      daysLeft == null 
-                          ? '진행중' 
-                          : (daysLeft > 0 ? 'D-$daysLeft' : '종료'),
+                      badgeText,
                       style: TextStyle(
-                        color: daysLeft == null
-                            ? const Color(0xFF4E5968)
-                            : (daysLeft > 0 
-                                ? const Color(0xFF3182F6)
-                                : const Color(0xFFFF5247)),
+                        color: badgeTextColor,
                         fontWeight: FontWeight.w600,
                         fontSize: 13,
                       ),

@@ -4,8 +4,7 @@ import 'package:firebase_core/firebase_core.dart';
 import 'firebase_options.dart';
 import 'providers/challenge_provider.dart';
 import 'providers/auth_provider.dart';
-import 'screens/auth/login_screen.dart';
-import 'screens/main/main_navigation.dart';
+import 'screens/splash_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -118,10 +117,8 @@ class MyApp extends StatelessWidget {
             elevation: 2,
           ),
             ),
-              // 인증 상태에 따라 화면 전환
-              home: authProvider.isAuthenticated
-                  ? const MainNavigation()
-                  : const LoginScreen(),
+              // 스플래시 화면을 초기 화면으로 설정
+              home: const SplashScreen(),
             debugShowCheckedModeBanner: false,
           );
         },

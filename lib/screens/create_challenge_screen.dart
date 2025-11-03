@@ -5,6 +5,7 @@ import '../providers/auth_provider.dart';
 import '../services/firestore_service.dart';
 import '../models/challenge.dart';
 import '../models/member.dart';
+import '../utils/text_encoding.dart';
 
 class CreateChallengeScreen extends StatefulWidget {
   const CreateChallengeScreen({super.key});
@@ -109,9 +110,9 @@ class _CreateChallengeScreenState extends State<CreateChallengeScreen> {
 
       final challenge = Challenge(
         id: uuid.v4(),
-        title: _titleController.text.trim(),
-        description: _descriptionController.text.trim(),
-        rules: _rulesController.text.trim(),
+        title: TextEncoding.normalizeInput(_titleController.text),
+        description: TextEncoding.normalizeInput(_descriptionController.text),
+        rules: TextEncoding.normalizeInput(_rulesController.text),
         startDate: _startDate,
         endDate: _isEndDateUndecided ? null : _endDate,
         frequency: _frequency,

@@ -6,6 +6,7 @@ import '../profile/edit_profile_screen.dart';
 // import '../profile/penalty_history_screen.dart'; // TODO: 나중에 벌금 현황 기능 추가 시 사용
 import '../friends/friends_screen.dart';
 import '../challenge_invitations_screen.dart';
+import '../splash_screen.dart';
 
 class MyPageScreen extends StatelessWidget {
   const MyPageScreen({super.key});
@@ -194,9 +195,18 @@ class MyPageScreen extends StatelessWidget {
             child: const Text('취소'),
           ),
           TextButton(
-            onPressed: () {
+            onPressed: () async {
               Navigator.pop(context);
-              authProvider.signOut();
+              await authProvider.signOut();
+              // 로그아웃 후 스플래시 화면으로 이동
+              if (context.mounted) {
+                Navigator.of(context).pushAndRemoveUntil(
+                  MaterialPageRoute(
+                    builder: (context) => const SplashScreen(),
+                  ),
+                  (route) => false,
+                );
+              }
             },
             style: TextButton.styleFrom(
               foregroundColor: const Color(0xFFFF5247),

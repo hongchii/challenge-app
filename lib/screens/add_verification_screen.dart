@@ -8,6 +8,7 @@ import '../providers/auth_provider.dart';
 import '../services/firestore_service.dart';
 import '../services/storage_service.dart';
 import '../models/verification.dart';
+import '../utils/text_encoding.dart';
 
 class AddVerificationScreen extends StatefulWidget {
   final String challengeId;
@@ -170,14 +171,13 @@ class _AddVerificationScreenState extends State<AddVerificationScreen> {
 
         // 인증 기록 생성
         final uuid = const Uuid();
+        final normalizedNote = TextEncoding.normalizeInput(_noteController.text);
         final verification = Verification(
           id: uuid.v4(),
           memberId: currentUserId,
           dateTime: DateTime.now(),
           imagePath: imageUrl, // Firebase Storage URL 저장
-          note: _noteController.text.trim().isEmpty 
-              ? null 
-              : _noteController.text.trim(),
+          note: normalizedNote.isEmpty ? null : normalizedNote,
         );
 
         // Firestore에 인증 추가

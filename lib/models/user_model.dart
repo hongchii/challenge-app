@@ -1,3 +1,5 @@
+import '../utils/text_encoding.dart';
+
 class UserModel {
   final String id;
   final String email;
@@ -25,12 +27,14 @@ class UserModel {
       };
 
   factory UserModel.fromJson(Map<String, dynamic> json) => UserModel(
-        id: json['id'],
-        email: json['email'],
-        nickname: json['nickname'],
-        profileImageUrl: json['profileImageUrl'],
-        createdAt: DateTime.parse(json['createdAt']),
-        friendIds: List<String>.from(json['friendIds'] ?? []),
+        id: TextEncoding.safeStringFromJson(json, 'id'),
+        email: TextEncoding.safeStringFromJson(json, 'email'),
+        nickname: TextEncoding.safeStringFromJson(json, 'nickname'),
+        profileImageUrl: json['profileImageUrl'] != null 
+            ? TextEncoding.normalizeString(json['profileImageUrl'])
+            : null,
+        createdAt: DateTime.parse(TextEncoding.safeStringFromJson(json, 'createdAt')),
+        friendIds: (json['friendIds'] as List?)?.map((e) => TextEncoding.normalizeString(e)).toList().cast<String>() ?? [],
       );
 
   UserModel copyWith({

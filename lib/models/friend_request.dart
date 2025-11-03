@@ -1,3 +1,5 @@
+import '../utils/text_encoding.dart';
+
 enum FriendRequestStatus {
   pending,
   accepted,
@@ -28,12 +30,14 @@ class FriendRequest {
       };
 
   factory FriendRequest.fromJson(Map<String, dynamic> json) => FriendRequest(
-        id: json['id'],
-        fromUserId: json['fromUserId'],
-        toUserId: json['toUserId'],
-        status: FriendRequestStatus.values
-            .firstWhere((e) => e.name == json['status']),
-        createdAt: DateTime.parse(json['createdAt']),
+        id: TextEncoding.safeStringFromJson(json, 'id'),
+        fromUserId: TextEncoding.safeStringFromJson(json, 'fromUserId'),
+        toUserId: TextEncoding.safeStringFromJson(json, 'toUserId'),
+        status: FriendRequestStatus.values.firstWhere(
+          (e) => e.name == TextEncoding.normalizeString(json['status']),
+          orElse: () => FriendRequestStatus.pending,
+        ),
+        createdAt: DateTime.parse(TextEncoding.safeStringFromJson(json, 'createdAt')),
       );
 }
 

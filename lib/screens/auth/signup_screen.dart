@@ -6,6 +6,7 @@ import 'package:image_picker/image_picker.dart';
 import '../../providers/auth_provider.dart';
 import '../../services/storage_service.dart';
 import '../../services/firestore_service.dart';
+import '../../utils/text_encoding.dart';
 
 class SignUpScreen extends StatefulWidget {
   final String? initialEmail;
@@ -108,7 +109,8 @@ class _SignUpScreenState extends State<SignUpScreen> {
         }
 
         // 닉네임 중복 체크
-        final nicknameExists = await _firestoreService.isNicknameExists(_nicknameController.text.trim());
+        final normalizedNickname = TextEncoding.normalizeInput(_nicknameController.text);
+        final nicknameExists = await _firestoreService.isNicknameExists(normalizedNickname);
         if (nicknameExists) {
           setState(() => _isUploading = false);
           if (mounted) {
@@ -151,7 +153,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
         final success = await authProvider.signUp(
           email: _emailController.text.trim(),
           password: _passwordController.text,
-          nickname: _nicknameController.text.trim(),
+          nickname: normalizedNickname,
           profileImageUrl: profileImageUrl,
         );
 

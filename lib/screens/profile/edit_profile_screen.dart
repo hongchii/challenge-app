@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import 'package:image_picker/image_picker.dart';
 import '../../providers/auth_provider.dart';
 import '../../services/storage_service.dart';
+import '../../utils/text_encoding.dart';
 
 class EditProfileScreen extends StatefulWidget {
   const EditProfileScreen({super.key});
@@ -89,7 +90,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
 
       // 프로필 업데이트
       final updatedUser = currentUser.copyWith(
-        nickname: _nicknameController.text.trim(),
+        nickname: TextEncoding.normalizeInput(_nicknameController.text),
         profileImageUrl: newProfileImageUrl,
       );
 

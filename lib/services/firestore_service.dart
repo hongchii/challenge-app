@@ -5,6 +5,7 @@ import '../models/member.dart';
 import '../models/friend_request.dart';
 import '../models/payment_record.dart';
 import '../models/challenge_invitation.dart';
+import '../utils/text_encoding.dart';
 
 class FirestoreService {
   final FirebaseFirestore _db = FirebaseFirestore.instance;
@@ -32,10 +33,13 @@ class FirestoreService {
 
   // 닉네임으로 사용자 검색
   Future<List<UserModel>> searchUsersByNickname(String nickname) async {
+    // 검색 쿼리도 정규화하여 인코딩 문제 방지
+    final normalizedNickname = TextEncoding.normalizeString(nickname);
+    
     final snapshot = await _db
         .collection('users')
-        .where('nickname', isGreaterThanOrEqualTo: nickname)
-        .where('nickname', isLessThanOrEqualTo: '$nickname\uf8ff')
+        .where('nickname', isGreaterThanOrEqualTo: normalizedNickname)
+        .where('nickname', isLessThanOrEqualTo: '$normalizedNickname\uf8ff')
         .limit(20)
         .get();
 
@@ -137,14 +141,40 @@ class FirestoreService {
     await _db.collection('challenges').doc(challenge.id).set(challenge.toJson());
   }
 
-  // 챌린지 삭제
+  // 챌린지 삭제 (관련된 모든 데이터 삭제)
   Future<void> deleteChallenge(String challengeId) async {
-    await _db.collection('challenges').doc(challengeId).delete();
+    final batch = _db.batch();
+    
+    // 챌린지 삭제
+    batch.delete(_db.collection('challenges').doc(challengeId));
+    
+    // 관련된 입금 기록 삭제
+    final paymentRecords = await _db
+        .collection('paymentRecords')
+        .where('challengeId', isEqualTo: challengeId)
+        .get();
+    for (final doc in paymentRecords.docs) {
+      batch.delete(doc.reference);
+    }
+    
+    // 관련된 챌린지 초대 삭제
+    final invitations = await _db
+        .collection('challengeInvitations')
+        .where('challengeId', isEqualTo: challengeId)
+        .get();
+    for (final doc in invitations.docs) {
+      batch.delete(doc.reference);
+    }
+    
+    await batch.commit();
   }
 
   // 챌린지 업데이트
   Future<void> updateChallenge(Challenge challenge) async {
-    await _db.collection('challenges').doc(challenge.id).update(challenge.toJson());
+    // set을 사용하여 전체 문서를 덮어쓰기
+    await _db.collection('challenges').doc(challenge.id).set(
+      challenge.toJson(),
+    );
   }
 
   // 인증 추가
@@ -172,22 +202,38 @@ class FirestoreService {
     return _db
         .collection('challenges')
         .where('isPrivate', isEqualTo: false)
-        .orderBy('startDate', descending: true)
         .snapshots()
-        .map((snapshot) => snapshot.docs
-            .map((doc) => Challenge.fromJson(doc.data()))
-            .toList());
+        .map((snapshot) {
+          final challenges = snapshot.docs
+              .map((doc) => Challenge.fromJson(doc.data()))
+              .toList();
+          // createdAt이 있으면 createdAt 기준, 없으면 startDate 기준으로 정렬 (최신순)
+          challenges.sort((a, b) {
+            final aDate = a.createdAt ?? a.startDate;
+            final bDate = b.createdAt ?? b.startDate;
+            return bDate.compareTo(aDate);
+          });
+          return challenges;
+        });
   }
 
   // 모든 챌린지 (공개 + 비밀 기본정보)
   Stream<List<Challenge>> allChallenges() {
     return _db
         .collection('challenges')
-        .orderBy('startDate', descending: true)
         .snapshots()
-        .map((snapshot) => snapshot.docs
-            .map((doc) => Challenge.fromJson(doc.data()))
-            .toList());
+        .map((snapshot) {
+          final challenges = snapshot.docs
+              .map((doc) => Challenge.fromJson(doc.data()))
+              .toList();
+          // createdAt이 있으면 createdAt 기준, 없으면 startDate 기준으로 정렬 (최신순)
+          challenges.sort((a, b) {
+            final aDate = a.createdAt ?? a.startDate;
+            final bDate = b.createdAt ?? b.startDate;
+            return bDate.compareTo(aDate);
+          });
+          return challenges;
+        });
   }
 
   // 특정 챌린지 상세 정보 스트림
@@ -282,8 +328,12 @@ class FirestoreService {
           final challenges = snapshot.docs
               .map((doc) => Challenge.fromJson(doc.data()))
               .toList();
-          // 클라이언트에서 정렬
-          challenges.sort((a, b) => b.startDate.compareTo(a.startDate));
+          // createdAt이 있으면 createdAt 기준, 없으면 startDate 기준으로 정렬 (최신순)
+          challenges.sort((a, b) {
+            final aDate = a.createdAt ?? a.startDate;
+            final bDate = b.createdAt ?? b.startDate;
+            return bDate.compareTo(aDate);
+          });
           return challenges;
         });
   }

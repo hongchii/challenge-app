@@ -1,3 +1,5 @@
+import '../utils/text_encoding.dart';
+
 class ChallengeInvitation {
   final String id;
   final String challengeId;
@@ -34,14 +36,14 @@ class ChallengeInvitation {
 
   factory ChallengeInvitation.fromJson(Map<String, dynamic> json) {
     return ChallengeInvitation(
-      id: json['id'] as String,
-      challengeId: json['challengeId'] as String,
-      challengeTitle: json['challengeTitle'] as String,
-      fromUserId: json['fromUserId'] as String,
-      fromUserNickname: json['fromUserNickname'] as String,
-      toUserId: json['toUserId'] as String,
-      createdAt: DateTime.parse(json['createdAt'] as String),
-      status: json['status'] as String? ?? 'pending',
+      id: TextEncoding.safeStringFromJson(json, 'id'),
+      challengeId: TextEncoding.safeStringFromJson(json, 'challengeId'),
+      challengeTitle: TextEncoding.safeStringFromJson(json, 'challengeTitle'),
+      fromUserId: TextEncoding.safeStringFromJson(json, 'fromUserId'),
+      fromUserNickname: TextEncoding.safeStringFromJson(json, 'fromUserNickname'),
+      toUserId: TextEncoding.safeStringFromJson(json, 'toUserId'),
+      createdAt: DateTime.parse(TextEncoding.safeStringFromJson(json, 'createdAt')),
+      status: TextEncoding.safeStringFromJson(json, 'status', defaultValue: 'pending'),
     );
   }
 

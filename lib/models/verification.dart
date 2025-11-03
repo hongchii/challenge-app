@@ -1,3 +1,5 @@
+import '../utils/text_encoding.dart';
+
 class Verification {
   final String id;
   final String memberId;
@@ -22,11 +24,15 @@ class Verification {
       };
 
   factory Verification.fromJson(Map<String, dynamic> json) => Verification(
-        id: json['id'],
-        memberId: json['memberId'],
-        dateTime: DateTime.parse(json['dateTime']),
-        imagePath: json['imagePath'],
-        note: json['note'],
+        id: TextEncoding.safeStringFromJson(json, 'id'),
+        memberId: TextEncoding.safeStringFromJson(json, 'memberId'),
+        dateTime: DateTime.parse(TextEncoding.safeStringFromJson(json, 'dateTime')),
+        imagePath: json['imagePath'] != null 
+            ? TextEncoding.normalizeString(json['imagePath'])
+            : null,
+        note: json['note'] != null 
+            ? TextEncoding.normalizeString(json['note'])
+            : null,
       );
 }
 

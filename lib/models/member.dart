@@ -1,3 +1,5 @@
+import '../utils/text_encoding.dart';
+
 class Member {
   final String id;
   final String name;
@@ -16,8 +18,8 @@ class Member {
       };
 
   factory Member.fromJson(Map<String, dynamic> json) => Member(
-        id: json['id'],
-        name: json['name'],
+        id: TextEncoding.safeStringFromJson(json, 'id'),
+        name: TextEncoding.safeStringFromJson(json, 'name'),
         isLeader: json['isLeader'] ?? false,
       );
 }

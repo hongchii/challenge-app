@@ -5,6 +5,7 @@ import '../../providers/auth_provider.dart';
 import '../../services/firestore_service.dart';
 import '../../models/user_model.dart';
 import '../../models/friend_request.dart';
+import '../../utils/text_encoding.dart';
 
 class SearchFriendsScreen extends StatefulWidget {
   const SearchFriendsScreen({super.key});
@@ -29,7 +30,7 @@ class _SearchFriendsScreenState extends State<SearchFriendsScreen> {
   }
 
   Future<void> _searchUsers() async {
-    final query = _searchController.text.trim();
+    final query = TextEncoding.normalizeInput(_searchController.text);
     if (query.isEmpty) return;
 
     setState(() {

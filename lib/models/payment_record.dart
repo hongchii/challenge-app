@@ -1,3 +1,5 @@
+import '../utils/text_encoding.dart';
+
 enum PaymentStatus {
   pending,    // 입금 대기
   completed,  // 입금 완료 (확인됨)
@@ -33,14 +35,17 @@ class PaymentRecord {
       };
 
   factory PaymentRecord.fromJson(Map<String, dynamic> json) => PaymentRecord(
-        id: json['id'],
-        challengeId: json['challengeId'],
-        memberId: json['memberId'],
-        amount: json['amount'],
-        status: PaymentStatus.values.firstWhere((e) => e.name == json['status']),
-        createdAt: DateTime.parse(json['createdAt']),
+        id: TextEncoding.safeStringFromJson(json, 'id'),
+        challengeId: TextEncoding.safeStringFromJson(json, 'challengeId'),
+        memberId: TextEncoding.safeStringFromJson(json, 'memberId'),
+        amount: (json['amount'] ?? 0.0).toDouble(),
+        status: PaymentStatus.values.firstWhere(
+          (e) => e.name == TextEncoding.normalizeString(json['status']),
+          orElse: () => PaymentStatus.pending,
+        ),
+        createdAt: DateTime.parse(TextEncoding.safeStringFromJson(json, 'createdAt')),
         confirmedAt: json['confirmedAt'] != null
-            ? DateTime.parse(json['confirmedAt'])
+            ? DateTime.parse(TextEncoding.normalizeString(json['confirmedAt']))
             : null,
       );
 }
