@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:provider/provider.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'firebase_options.dart';
@@ -37,6 +38,16 @@ class MyApp extends StatelessWidget {
             builder: (context, authProvider, _) {
           return MaterialApp(
             title: '챌린지',
+            locale: const Locale('ko', 'KR'),
+            localizationsDelegates: [
+              GlobalMaterialLocalizations.delegate,
+              GlobalWidgetsLocalizations.delegate,
+              GlobalCupertinoLocalizations.delegate,
+            ],
+            supportedLocales: const [
+              Locale('ko', 'KR'),
+              Locale('en', 'US'),
+            ],
             theme: ThemeData(
           // 토스 블루 컬러
           primaryColor: const Color(0xFF3182F6),

@@ -1,11 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../providers/auth_provider.dart';
-import '../../services/firestore_service.dart';
 import '../profile/edit_profile_screen.dart';
 // import '../profile/penalty_history_screen.dart'; // TODO: 나중에 벌금 현황 기능 추가 시 사용
 import '../friends/friends_screen.dart';
-import '../challenge_invitations_screen.dart';
 import '../splash_screen.dart';
 
 class MyPageScreen extends StatelessWidget {
@@ -114,11 +112,6 @@ class MyPageScreen extends StatelessWidget {
 
           const SizedBox(height: 24),
 
-          // 챌린지 초대 카드
-          _InvitationCard(userId: user.id),
-
-          const SizedBox(height: 12),
-
           // 메뉴 카드들
           Row(
             children: [
@@ -218,116 +211,6 @@ class MyPageScreen extends StatelessWidget {
           ),
         ],
       ),
-    );
-  }
-}
-
-class _InvitationCard extends StatelessWidget {
-  final String userId;
-
-  const _InvitationCard({required this.userId});
-
-  @override
-  Widget build(BuildContext context) {
-    final firestoreService = FirestoreService();
-
-    return StreamBuilder(
-      stream: firestoreService.challengeInvitationsStream(userId),
-      builder: (context, snapshot) {
-        final count = snapshot.data?.length ?? 0;
-
-        return Material(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(20),
-          child: InkWell(
-            onTap: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => const ChallengeInvitationsScreen(),
-                ),
-              );
-            },
-            borderRadius: BorderRadius.circular(20),
-            child: Container(
-              padding: const EdgeInsets.all(20),
-              decoration: BoxDecoration(
-                border: Border.all(color: const Color(0xFFE5E8EB)),
-                borderRadius: BorderRadius.circular(20),
-              ),
-              child: Row(
-                children: [
-                  Stack(
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.all(14),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFFFF8E1),
-                          borderRadius: BorderRadius.circular(14),
-                        ),
-                        child: const Icon(
-                          Icons.mail,
-                          size: 28,
-                          color: Color(0xFFFFA726),
-                        ),
-                      ),
-                      if (count > 0)
-                        Positioned(
-                          right: 0,
-                          top: 0,
-                          child: Container(
-                            padding: const EdgeInsets.all(6),
-                            decoration: const BoxDecoration(
-                              color: Color(0xFFFF5247),
-                              shape: BoxShape.circle,
-                            ),
-                            child: Text(
-                              count > 99 ? '99+' : count.toString(),
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontSize: 10,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                          ),
-                        ),
-                    ],
-                  ),
-                  const SizedBox(width: 16),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Text(
-                          '챌린지 초대',
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                            color: Color(0xFF191F28),
-                          ),
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          count > 0 ? '$count개의 새로운 초대' : '받은 초대가 없습니다',
-                          style: TextStyle(
-                            fontSize: 13,
-                            color: count > 0 ? const Color(0xFFFFA726) : const Color(0xFF8B95A1),
-                            fontWeight: count > 0 ? FontWeight.w600 : FontWeight.normal,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const Icon(
-                    Icons.chevron_right,
-                    color: Color(0xFF8B95A1),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        );
-      },
     );
   }
 }

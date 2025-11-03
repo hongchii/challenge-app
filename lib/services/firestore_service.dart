@@ -365,6 +365,36 @@ class FirestoreService {
     });
   }
 
+  // 공개 챌린지 참가 (즉시 참가)
+  Future<void> joinPublicChallenge(String challengeId, String userId) async {
+    await _db.collection('challenges').doc(challengeId).update({
+      'participantIds': FieldValue.arrayUnion([userId]),
+    });
+  }
+
+  // 챌린지 나가기
+  Future<void> leaveChallenge(String challengeId, String userId) async {
+    await _db.collection('challenges').doc(challengeId).update({
+      'participantIds': FieldValue.arrayRemove([userId]),
+      'pendingParticipantIds': FieldValue.arrayRemove([userId]),
+    });
+  }
+
+  // 그룹장의 챌린지 참가 신청 목록 가져오기
+  Stream<List<Challenge>> pendingParticipantRequests(String creatorId) {
+    return _db
+        .collection('challenges')
+        .where('creatorId', isEqualTo: creatorId)
+        .snapshots()
+        .map((snapshot) {
+          final challenges = snapshot.docs
+              .map((doc) => Challenge.fromJson(doc.data()))
+              .where((challenge) => challenge.pendingParticipantIds.isNotEmpty)
+              .toList();
+          return challenges;
+        });
+  }
+
   // ==================== 입금 기록 관련 ====================
 
   // 입금 기록 생성

@@ -9,6 +9,7 @@ import '../models/verification.dart';
 import 'add_member_screen.dart';
 import 'add_verification_screen.dart';
 import 'verification_detail_screen.dart';
+import 'verification_history_screen.dart';
 import 'edit_challenge_screen.dart';
 
 class ChallengeDetailScreen extends StatelessWidget {
@@ -181,9 +182,256 @@ class ChallengeDetailScreen extends StatelessWidget {
     }
   }
 
-  void _showSettingsMenu(BuildContext context, Challenge challenge) {
+  Future<void> _requestJoinChallenge(BuildContext context, Challenge challenge, String userId) async {
+    debugPrint('_requestJoinChallenge 함수 시작');
+    if (!context.mounted) {
+      return;
+    }
+
+    // 이미 참가 신청 중인지 확인
+    if (challenge.pendingParticipantIds.contains(userId)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('이미 참가 신청이 완료되었습니다'),
+          backgroundColor: Color(0xFFFF5247),
+        ),
+      );
+      return;
+    }
+
+    // 이미 참가자인지 확인
+    if (challenge.participantIds.contains(userId)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('이미 참가 중인 챌린지입니다'),
+          backgroundColor: Color(0xFFFF5247),
+        ),
+      );
+      return;
+    }
+
+    try {
+      final firestoreService = FirestoreService();
+      
+      // 모든 챌린지는 참가 신청만 가능 (그룹장 승인 필요)
+      await firestoreService.requestJoinChallenge(challenge.id, userId);
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('참가 신청이 완료되었습니다. 그룹장의 승인을 기다려주세요'),
+            backgroundColor: Color(0xFF3182F6),
+          ),
+        );
+      }
+    } catch (e) {
+      debugPrint('참가 신청 오류: $e');
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('참가 신청 실패: $e'),
+            backgroundColor: const Color(0xFFFF5247),
+            duration: const Duration(seconds: 3),
+          ),
+        );
+      }
+    }
+  }
+
+  Future<void> _leaveChallenge(BuildContext context, Challenge challenge, String userId) async {
+    debugPrint('_leaveChallenge 함수 시작');
+    if (!context.mounted) {
+      return;
+    }
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      barrierDismissible: true,
+      builder: (dialogContext) => AlertDialog(
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20),
+        ),
+        title: const Text(
+          '챌린지 나가기',
+          style: TextStyle(fontWeight: FontWeight.bold),
+        ),
+        content: const Text('정말 이 챌린지를 나가시겠습니까?\n나가면 다시 참가할 수 없습니다.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            style: TextButton.styleFrom(
+              foregroundColor: const Color(0xFF8B95A1),
+            ),
+            child: const Text('취소'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, true),
+            style: TextButton.styleFrom(
+              foregroundColor: const Color(0xFFFF5247),
+            ),
+            child: const Text(
+              '나가기',
+              style: TextStyle(fontWeight: FontWeight.w600),
+            ),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true || !context.mounted) {
+      return;
+    }
+
+    try {
+      final firestoreService = FirestoreService();
+      await firestoreService.leaveChallenge(challenge.id, userId);
+      
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('챌린지에서 나갔습니다'),
+            backgroundColor: Color(0xFF17C964),
+          ),
+        );
+        // 상세 화면을 닫고 이전 화면으로 이동
+        Navigator.pop(context);
+      }
+    } catch (e) {
+      debugPrint('챌린지 나가기 오류: $e');
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('나가기 실패: $e'),
+            backgroundColor: const Color(0xFFFF5247),
+            duration: const Duration(seconds: 3),
+          ),
+        );
+      }
+    }
+  }
+
+  void _showSettingsMenu(BuildContext context, Challenge challenge, bool isCreator, bool isMember) {
     debugPrint('_showSettingsMenu 호출됨, challenge.id: ${challenge.id}');
     final parentContext = context; // 원래 context 저장
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+    final currentUserId = authProvider.userModel?.id ?? '';
+    
+    // 메뉴 아이템 리스트 구성
+    final List<Widget> menuItems = [];
+    
+    // 그룹장인 경우: 수정, 종료, 삭제
+    if (isCreator) {
+      menuItems.addAll([
+        ListTile(
+          contentPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+          leading: const Icon(Icons.edit, color: Color(0xFF3182F6), size: 24),
+          title: const Text(
+            '챌린지 수정',
+            style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
+          ),
+          onTap: () {
+            Navigator.pop(context);
+            Navigator.push(
+              parentContext,
+              MaterialPageRoute(
+                builder: (context) => EditChallengeScreen(
+                  challenge: challenge,
+                ),
+              ),
+            );
+          },
+        ),
+        ListTile(
+          contentPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+          leading: const Icon(Icons.stop_circle, color: Color(0xFF3182F6), size: 24),
+          title: const Text(
+            '챌린지 종료',
+            style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
+          ),
+          onTap: () {
+            debugPrint('종료 버튼 클릭됨');
+            Navigator.pop(context);
+            Future.delayed(const Duration(milliseconds: 300), () {
+              if (parentContext.mounted) {
+                debugPrint('종료 함수 호출 시작');
+                _endChallenge(parentContext, challenge);
+              } else {
+                debugPrint('parentContext가 mounted되지 않음');
+              }
+            });
+          },
+        ),
+        ListTile(
+          contentPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+          leading: const Icon(Icons.delete_outline, color: Color(0xFFFF5247), size: 24),
+          title: const Text(
+            '챌린지 삭제',
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.w500,
+              color: Color(0xFFFF5247),
+            ),
+          ),
+          onTap: () {
+            debugPrint('삭제 버튼 클릭됨');
+            Navigator.pop(context);
+            Future.delayed(const Duration(milliseconds: 300), () {
+              if (parentContext.mounted) {
+                debugPrint('삭제 함수 호출 시작');
+                _deleteChallenge(parentContext, challenge);
+              } else {
+                debugPrint('parentContext가 mounted되지 않음');
+              }
+            });
+          },
+        ),
+      ]);
+    }
+    // 참가자가 아닌 경우: 참가 신청
+    else if (!isMember) {
+      menuItems.add(
+        ListTile(
+          contentPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+          leading: const Icon(Icons.person_add, color: Color(0xFF3182F6), size: 24),
+          title: const Text(
+            '참가 신청',
+            style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
+          ),
+          onTap: () {
+            Navigator.pop(context);
+            Future.delayed(const Duration(milliseconds: 300), () {
+              if (parentContext.mounted) {
+                _requestJoinChallenge(parentContext, challenge, currentUserId);
+              }
+            });
+          },
+        ),
+      );
+    }
+    // 단순 참가자인 경우: 챌린지 나가기
+    else {
+      menuItems.add(
+        ListTile(
+          contentPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+          leading: const Icon(Icons.exit_to_app, color: Color(0xFFFF5247), size: 24),
+          title: const Text(
+            '챌린지 나가기',
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.w500,
+              color: Color(0xFFFF5247),
+            ),
+          ),
+          onTap: () {
+            Navigator.pop(context);
+            Future.delayed(const Duration(milliseconds: 300), () {
+              if (parentContext.mounted) {
+                _leaveChallenge(parentContext, challenge, currentUserId);
+              }
+            });
+          },
+        ),
+      );
+    }
     
     showModalBottomSheet(
       context: context,
@@ -197,69 +445,7 @@ class ChallengeDetailScreen extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            ListTile(
-              contentPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-              leading: const Icon(Icons.edit, color: Color(0xFF3182F6), size: 24),
-              title: const Text(
-                '챌린지 수정',
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
-              ),
-              onTap: () {
-                Navigator.pop(bottomSheetContext);
-                Navigator.push(
-                  parentContext,
-                  MaterialPageRoute(
-                    builder: (context) => EditChallengeScreen(
-                      challenge: challenge,
-                    ),
-                  ),
-                );
-              },
-            ),
-            ListTile(
-              contentPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-              leading: const Icon(Icons.stop_circle, color: Color(0xFF3182F6), size: 24),
-              title: const Text(
-                '챌린지 종료',
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
-              ),
-              onTap: () {
-                debugPrint('종료 버튼 클릭됨');
-                Navigator.pop(bottomSheetContext);
-                Future.delayed(const Duration(milliseconds: 300), () {
-                  if (parentContext.mounted) {
-                    debugPrint('종료 함수 호출 시작');
-                    _endChallenge(parentContext, challenge);
-                  } else {
-                    debugPrint('parentContext가 mounted되지 않음');
-                  }
-                });
-              },
-            ),
-            ListTile(
-              contentPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-              leading: const Icon(Icons.delete_outline, color: Color(0xFFFF5247), size: 24),
-              title: const Text(
-                '챌린지 삭제',
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w500,
-                  color: Color(0xFFFF5247),
-                ),
-              ),
-              onTap: () {
-                debugPrint('삭제 버튼 클릭됨');
-                Navigator.pop(bottomSheetContext);
-                Future.delayed(const Duration(milliseconds: 300), () {
-                  if (parentContext.mounted) {
-                    debugPrint('삭제 함수 호출 시작');
-                    _deleteChallenge(parentContext, challenge);
-                  } else {
-                    debugPrint('parentContext가 mounted되지 않음');
-                  }
-                });
-              },
-            ),
+            ...menuItems,
             SizedBox(
               height: MediaQuery.of(bottomSheetContext).padding.bottom,
             ),
@@ -329,18 +515,16 @@ class ChallengeDetailScreen extends StatelessWidget {
           appBar: AppBar(
             title: const Text('챌린지 상세'),
             backgroundColor: const Color(0xFFF9FAFB),
-            actions: isCreator
-                ? [
-                    IconButton(
-                      icon: const Icon(Icons.more_vert),
-                      onPressed: () {
-                        debugPrint('설정 메뉴 버튼 클릭됨');
-                        _showSettingsMenu(context, challenge);
-                      },
-                      tooltip: '더보기',
-                    ),
-                  ]
-                : null,
+            actions: [
+              IconButton(
+                icon: const Icon(Icons.more_vert),
+                onPressed: () {
+                  debugPrint('설정 메뉴 버튼 클릭됨');
+                  _showSettingsMenu(context, challenge, isCreator, isMember);
+                },
+                tooltip: '더보기',
+              ),
+            ],
           ),
 
           body: SingleChildScrollView(
@@ -353,6 +537,7 @@ class ChallengeDetailScreen extends StatelessWidget {
                 const SizedBox(height: 16),
                 _MembersSection(
                   challenge: challenge,
+                  isCreator: isCreator,
                   isMember: isMember && !isEnded,
                   onAddMember: () {
                     Navigator.push(
@@ -367,7 +552,10 @@ class ChallengeDetailScreen extends StatelessWidget {
                   },
                 ),
                 const SizedBox(height: 16),
-                _VerificationsSection(challenge: challenge),
+                _VerificationsSection(
+                  challenge: challenge,
+                  isMember: isMember,
+                ),
                 
                 const SizedBox(height: 100), // 하단 여백
               ],
@@ -709,11 +897,13 @@ class _InfoRow extends StatelessWidget {
 
 class _MembersSection extends StatefulWidget {
   final Challenge challenge;
+  final bool isCreator;
   final bool isMember;
   final VoidCallback onAddMember;
 
   const _MembersSection({
     required this.challenge,
+    required this.isCreator,
     required this.isMember,
     required this.onAddMember,
   });
@@ -769,7 +959,7 @@ class _MembersSectionState extends State<_MembersSection> {
                   ),
                 ),
               ),
-              if (widget.isMember)
+              if (widget.isCreator)
                 TextButton.icon(
                   onPressed: widget.onAddMember,
                   icon: const Icon(Icons.add, size: 20),
@@ -883,8 +1073,12 @@ class _MemberItem extends StatelessWidget {
 
 class _VerificationsSection extends StatefulWidget {
   final Challenge challenge;
+  final bool isMember;
 
-  const _VerificationsSection({required this.challenge});
+  const _VerificationsSection({
+    required this.challenge,
+    required this.isMember,
+  });
 
   @override
   State<_VerificationsSection> createState() => _VerificationsSectionState();
@@ -914,11 +1108,19 @@ class _VerificationsSectionState extends State<_VerificationsSection> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           InkWell(
-            onTap: () {
-              setState(() {
-                _isExpanded = !_isExpanded;
-              });
-            },
+            onTap: widget.isMember
+                ? () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => VerificationHistoryScreen(
+                          challengeId: widget.challenge.id,
+                          challenge: widget.challenge,
+                        ),
+                      ),
+                    );
+                  }
+                : null,
             borderRadius: BorderRadius.circular(8),
             child: Padding(
               padding: const EdgeInsets.symmetric(vertical: 4),
@@ -927,15 +1129,20 @@ class _VerificationsSectionState extends State<_VerificationsSection> {
                 children: [
                   Text(
                     '✅ 인증 내역 (${widget.challenge.verifications.length}건)',
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 18,
                       fontWeight: FontWeight.bold,
-                      color: Color(0xFF191F28),
+                      color: widget.isMember 
+                          ? const Color(0xFF191F28)
+                          : const Color(0xFF8B95A1),
                     ),
                   ),
                   Icon(
-                    _isExpanded ? Icons.expand_less : Icons.expand_more,
-                    color: const Color(0xFF8B95A1),
+                    Icons.arrow_forward_ios,
+                    color: widget.isMember 
+                        ? const Color(0xFF8B95A1)
+                        : const Color(0xFFE5E8EB),
+                    size: 16,
                   ),
                 ],
               ),

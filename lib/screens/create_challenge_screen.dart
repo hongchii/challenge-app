@@ -54,6 +54,14 @@ class _CreateChallengeScreenState extends State<CreateChallengeScreen> {
       initialDate: isStartDate ? _startDate : _endDate,
       firstDate: DateTime.now(),
       lastDate: DateTime.now().add(const Duration(days: 365 * 5)),
+      locale: const Locale('ko', 'KR'),
+      builder: (context, child) {
+        return Localizations.override(
+          context: context,
+          locale: const Locale('ko', 'KR'),
+          child: child!,
+        );
+      },
     );
     if (picked != null) {
       setState(() {

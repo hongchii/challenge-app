@@ -5,6 +5,7 @@ import '../../services/firestore_service.dart';
 import '../../models/challenge.dart';
 import '../challenge_detail_screen.dart';
 import '../create_challenge_screen.dart';
+import '../challenge_invitations_screen.dart';
 
 class AllChallengesScreen extends StatelessWidget {
   const AllChallengesScreen({super.key});
@@ -17,6 +18,11 @@ class AllChallengesScreen extends StatelessWidget {
     return Scaffold(
       appBar: AppBar(
         title: const Text('전체 챌린지'),
+        actions: [
+          _NotificationBadge(
+            userId: authProvider.userModel?.id ?? '',
+          ),
+        ],
       ),
       body: StreamBuilder<List<Challenge>>(
         stream: firestoreService.allChallenges(),
@@ -326,3 +332,108 @@ class _InfoChip extends StatelessWidget {
   }
 }
 
+class _NotificationBadge extends StatelessWidget {
+  final String userId;
+
+  const _NotificationBadge({
+    required this.userId,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    if (userId.isEmpty) {
+      return IconButton(
+        icon: const Icon(Icons.notifications_outlined),
+        onPressed: null,
+        tooltip: '알림',
+      );
+    }
+
+    final firestoreService = FirestoreService();
+    final threeDaysAgo = DateTime.now().subtract(const Duration(days: 3));
+
+    return StreamBuilder<int>(
+      stream: Stream.periodic(const Duration(seconds: 2)).asyncMap((_) async {
+        try {
+          // 챌린지 초대 개수
+          final invitations = await firestoreService
+              .challengeInvitationsStream(userId)
+              .first;
+          final invitationCount = invitations
+              .where((inv) => inv.createdAt.isAfter(threeDaysAgo))
+              .length;
+
+          // 친구 요청 개수
+          final friendRequests = await firestoreService
+              .receivedFriendRequests(userId)
+              .first;
+          final friendRequestCount = friendRequests
+              .where((req) => req.createdAt.isAfter(threeDaysAgo))
+              .length;
+
+          // 참가 신청 개수 (그룹장인 경우)
+          final pendingChallenges = await firestoreService
+              .pendingParticipantRequests(userId)
+              .first;
+          int participantRequestCount = 0;
+          for (final challenge in pendingChallenges) {
+            final requestDate = challenge.createdAt ?? challenge.startDate;
+            if (requestDate.isAfter(threeDaysAgo)) {
+              participantRequestCount += challenge.pendingParticipantIds.length;
+            }
+          }
+
+          return invitationCount + friendRequestCount + participantRequestCount;
+        } catch (e) {
+          return 0;
+        }
+      }),
+      builder: (context, snapshot) {
+        final count = snapshot.data ?? 0;
+
+        return Stack(
+          clipBehavior: Clip.none,
+          children: [
+            IconButton(
+              icon: const Icon(Icons.notifications_outlined, size: 28),
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => const ChallengeInvitationsScreen(),
+                  ),
+                );
+              },
+              tooltip: '알림',
+            ),
+            if (count > 0)
+              Positioned(
+                right: 8,
+                top: 8,
+                child: Container(
+                  padding: const EdgeInsets.all(4),
+                  decoration: const BoxDecoration(
+                    color: Color(0xFFFF5247),
+                    shape: BoxShape.circle,
+                  ),
+                  constraints: const BoxConstraints(
+                    minWidth: 16,
+                    minHeight: 16,
+                  ),
+                  child: Text(
+                    count > 99 ? '99+' : count.toString(),
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 10,
+                      fontWeight: FontWeight.bold,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                ),
+              ),
+          ],
+        );
+      },
+    );
+  }
+}
