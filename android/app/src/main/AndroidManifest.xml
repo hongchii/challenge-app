@@ -6,6 +6,9 @@
                      android:maxSdkVersion="32" />
     <uses-permission android:name="android.permission.READ_MEDIA_IMAGES" />
     
+    <!-- 알림 권한 (Android 13 이상) -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    
     <uses-feature android:name="android.hardware.camera" android:required="false" />
     
     <application

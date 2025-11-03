@@ -551,6 +551,7 @@ class _VerificationListItem extends StatelessWidget {
                 MaterialPageRoute(
                   builder: (context) => VerificationDetailScreen(
                     verification: verification,
+                    challengeId: challengeId,
                   ),
                 ),
               );

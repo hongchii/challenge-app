@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:provider/provider.dart';
 import '../../providers/auth_provider.dart';
 import '../../services/firestore_service.dart';
@@ -352,10 +353,11 @@ class _NotificationBadge extends StatelessWidget {
     final firestoreService = FirestoreService();
     final threeDaysAgo = DateTime.now().subtract(const Duration(days: 3));
 
+    // 모든 스트림을 결합하여 실시간 업데이트
     return StreamBuilder<int>(
       stream: Stream.periodic(const Duration(seconds: 2)).asyncMap((_) async {
         try {
-          // 챌린지 초대 개수
+          // 챌린지 초대 개수 (스트림에서 직접 가져오기)
           final invitations = await firestoreService
               .challengeInvitationsStream(userId)
               .first;
@@ -363,7 +365,7 @@ class _NotificationBadge extends StatelessWidget {
               .where((inv) => inv.createdAt.isAfter(threeDaysAgo))
               .length;
 
-          // 친구 요청 개수
+          // 친구 요청 개수 (스트림에서 직접 가져오기)
           final friendRequests = await firestoreService
               .receivedFriendRequests(userId)
               .first;
@@ -383,8 +385,19 @@ class _NotificationBadge extends StatelessWidget {
             }
           }
 
-          return invitationCount + friendRequestCount + participantRequestCount;
+          // 인증 알림 개수 (스트림에서 직접 가져오기)
+          final verificationNotifications = await firestoreService
+              .unreadVerificationNotifications(userId)
+              .first;
+          final verificationCount = verificationNotifications
+              .where((notif) => notif.createdAt.isAfter(threeDaysAgo))
+              .length;
+
+          final total = invitationCount + friendRequestCount + participantRequestCount + verificationCount;
+          debugPrint('🔔 뱃지 개수 계산: 초대=$invitationCount, 친구=$friendRequestCount, 참가=$participantRequestCount, 인증=$verificationCount, 총=$total');
+          return total;
         } catch (e) {
+          debugPrint('❌ 뱃지 개수 계산 오류: $e');
           return 0;
         }
       }),

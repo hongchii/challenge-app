@@ -141,8 +141,6 @@ class _AddVerificationScreenState extends State<AddVerificationScreen> {
         return;
       }
 
-      setState(() => _isUploading = true);
-
       try {
         final authProvider = Provider.of<AuthProvider>(context, listen: false);
         final currentUserId = authProvider.userModel?.id;
@@ -150,6 +148,34 @@ class _AddVerificationScreenState extends State<AddVerificationScreen> {
         if (currentUserId == null) {
           throw Exception('로그인이 필요합니다');
         }
+
+        // 하루에 한번만 인증 가능한지 확인
+        final challenge = await _firestoreService.getChallenge(widget.challengeId);
+        if (challenge != null) {
+          final now = DateTime.now();
+          final today = DateTime(now.year, now.month, now.day);
+          
+          final hasVerifiedToday = challenge.verifications.any((v) {
+            final verificationDate = DateTime(
+              v.dateTime.year,
+              v.dateTime.month,
+              v.dateTime.day,
+            );
+            return v.memberId == currentUserId && verificationDate == today;
+          });
+
+          if (hasVerifiedToday) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('인증은 하루에 한번만 가능합니다'),
+                backgroundColor: Color(0xFFFF5247),
+              ),
+            );
+            return;
+          }
+        }
+
+        setState(() => _isUploading = true);
 
         // 이미지 업로드
         String imageUrl;

@@ -1,21 +1,28 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
+import 'package:provider/provider.dart';
 import '../models/verification.dart';
 import '../services/firestore_service.dart';
+import '../providers/auth_provider.dart';
 import 'package:intl/intl.dart';
 
 class VerificationDetailScreen extends StatelessWidget {
   final Verification verification;
+  final String challengeId; // 챌린지 ID 추가
 
   const VerificationDetailScreen({
     super.key,
     required this.verification,
+    required this.challengeId,
   });
 
   @override
   Widget build(BuildContext context) {
     final firestoreService = FirestoreService();
+    final authProvider = Provider.of<AuthProvider>(context);
+    final currentUserId = authProvider.userModel?.id ?? '';
     final dateFormat = DateFormat('yyyy.MM.dd HH:mm');
+    final isMyVerification = verification.memberId == currentUserId;
 
     // 디버깅: imagePath 확인
     if (kDebugMode) {
@@ -28,6 +35,14 @@ class VerificationDetailScreen extends StatelessWidget {
       appBar: AppBar(
         title: const Text('인증 상세'),
         backgroundColor: const Color(0xFFF9FAFB),
+        actions: [
+          if (isMyVerification)
+            IconButton(
+              icon: const Icon(Icons.delete_outline, color: Color(0xFFFF5247)),
+              onPressed: () => _showDeleteDialog(context),
+              tooltip: '삭제',
+            ),
+        ],
       ),
       body: FutureBuilder(
         future: firestoreService.getUser(verification.memberId),
@@ -202,6 +217,67 @@ class VerificationDetailScreen extends StatelessWidget {
         },
       ),
     );
+  }
+
+  Future<void> _showDeleteDialog(BuildContext context) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20),
+        ),
+        title: const Text(
+          '인증 삭제',
+          style: TextStyle(fontWeight: FontWeight.bold),
+        ),
+        content: const Text('정말 이 인증을 삭제하시겠습니까?\n삭제된 인증은 복구할 수 없습니다.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            style: TextButton.styleFrom(
+              foregroundColor: const Color(0xFF8B95A1),
+            ),
+            child: const Text('취소'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, true),
+            style: TextButton.styleFrom(
+              foregroundColor: const Color(0xFFFF5247),
+            ),
+            child: const Text(
+              '삭제',
+              style: TextStyle(fontWeight: FontWeight.w600),
+            ),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true && context.mounted) {
+      try {
+        final firestoreService = FirestoreService();
+        await firestoreService.deleteVerification(challengeId, verification.id);
+
+        if (context.mounted) {
+          Navigator.pop(context);
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('인증이 삭제되었습니다'),
+              backgroundColor: Color(0xFF17C964),
+            ),
+          );
+        }
+      } catch (e) {
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('삭제 실패: $e'),
+              backgroundColor: const Color(0xFFFF5247),
+            ),
+          );
+        }
+      }
+    }
   }
 }
 

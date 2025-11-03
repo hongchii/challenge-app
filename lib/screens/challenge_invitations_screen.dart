@@ -6,11 +6,14 @@ import '../services/firestore_service.dart';
 import '../models/challenge_invitation.dart';
 import '../models/friend_request.dart';
 import '../models/challenge.dart';
+import '../models/verification_notification.dart';
+import 'verification_history_screen.dart';
 
 enum NotificationType {
   challengeInvitation,
   friendRequest,
   participantRequest,
+  verification, // 인증 알림 추가
 }
 
 class NotificationItem {
@@ -38,6 +41,7 @@ class _ChallengeInvitationsScreenState extends State<ChallengeInvitationsScreen>
   List<ChallengeInvitation> _invitations = [];
   List<FriendRequest> _friendRequests = [];
   List<Challenge> _pendingChallenges = [];
+  List<VerificationNotification> _verificationNotifications = [];
 
   void _loadNotifications(String currentUserId) {
     final firestoreService = FirestoreService();
@@ -65,6 +69,16 @@ class _ChallengeInvitationsScreenState extends State<ChallengeInvitationsScreen>
       (pendingChallenges) {
         setState(() {
           _pendingChallenges = pendingChallenges;
+        });
+        _updateNotifications(currentUserId);
+      },
+    );
+
+    // 인증 알림 스트림 구독
+    firestoreService.unreadVerificationNotifications(currentUserId).listen(
+      (notifications) {
+        setState(() {
+          _verificationNotifications = notifications;
         });
         _updateNotifications(currentUserId);
       },
@@ -115,6 +129,17 @@ class _ChallengeInvitationsScreenState extends State<ChallengeInvitationsScreen>
             createdAt: requestDate,
           ));
         }
+      }
+    }
+
+    // 인증 알림 추가
+    for (final notification in _verificationNotifications) {
+      if (notification.createdAt.isAfter(threeDaysAgo)) {
+        notifications.add(NotificationItem(
+          type: NotificationType.verification,
+          data: notification,
+          createdAt: notification.createdAt,
+        ));
       }
     }
 
@@ -514,6 +539,12 @@ class _ChallengeInvitationsScreenState extends State<ChallengeInvitationsScreen>
                           data['userNickname'] as String,
                           dateFormat,
                         );
+                      case NotificationType.verification:
+                        return _buildVerificationItem(
+                          context,
+                          notification.data as VerificationNotification,
+                          dateFormat,
+                        );
                     }
                   },
               ),
@@ -898,6 +929,151 @@ class _ChallengeInvitationsScreenState extends State<ChallengeInvitationsScreen>
                   ),
                 ),
               ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildVerificationItem(
+    BuildContext context,
+    VerificationNotification notification,
+    DateFormat dateFormat,
+  ) {
+    final firestoreService = FirestoreService();
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 10,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF3182F6).withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: const Icon(
+                    Icons.check_circle,
+                    color: Color(0xFF3182F6),
+                    size: 24,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        '챌린지 인증',
+                        style: TextStyle(
+                          fontSize: 13,
+                          color: Color(0xFF8B95A1),
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        notification.challengeTitle,
+                        style: const TextStyle(
+                          fontSize: 17,
+                          fontWeight: FontWeight.bold,
+                          color: Color(0xFF191F28),
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      const SizedBox(height: 4),
+                      Row(
+                        children: [
+                          const Icon(
+                            Icons.person,
+                            size: 14,
+                            color: Color(0xFF8B95A1),
+                          ),
+                          const SizedBox(width: 4),
+                          Text(
+                            '${notification.memberNickname} 님이 챌린지 인증을 했습니다.',
+                            style: const TextStyle(
+                              fontSize: 13,
+                              color: Color(0xFF8B95A1),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            Text(
+              dateFormat.format(notification.createdAt),
+              style: const TextStyle(
+                fontSize: 12,
+                color: Color(0xFF8B95A1),
+              ),
+            ),
+            const SizedBox(height: 16),
+            ElevatedButton(
+              onPressed: () async {
+                // context를 미리 저장 (위젯이 제거되기 전에)
+                final navigator = Navigator.of(context);
+                final challengeId = notification.challengeId;
+                
+                // 챌린지 정보 가져오기
+                final challenge = await firestoreService.getChallenge(challengeId);
+                
+                // 알림 읽음 처리 및 삭제
+                await firestoreService.markVerificationNotificationAsRead(notification.id);
+                await firestoreService.deleteVerificationNotification(notification.id);
+                
+                // 페이지 이동 (context.mounted 체크는 불필요 - 이미 navigator 저장됨)
+                if (challenge != null) {
+                  navigator.push(
+                    MaterialPageRoute(
+                      builder: (context) => VerificationHistoryScreen(
+                        challengeId: challengeId,
+                        challenge: challenge,
+                      ),
+                    ),
+                  );
+                } else {
+                  // 챌린지를 찾을 수 없는 경우
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('챌린지를 찾을 수 없습니다'),
+                        backgroundColor: Color(0xFFFF5247),
+                      ),
+                    );
+                  }
+                }
+              },
+              style: ElevatedButton.styleFrom(
+                padding: const EdgeInsets.symmetric(vertical: 12),
+                minimumSize: const Size(double.infinity, 0),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+              child: const Text('인증내역 확인하기'),
             ),
           ],
         ),

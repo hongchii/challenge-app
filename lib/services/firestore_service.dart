@@ -5,6 +5,7 @@ import '../models/member.dart';
 import '../models/friend_request.dart';
 import '../models/payment_record.dart';
 import '../models/challenge_invitation.dart';
+import '../models/verification_notification.dart';
 import '../utils/text_encoding.dart';
 
 class FirestoreService {
@@ -188,6 +189,20 @@ class FirestoreService {
     }
   }
 
+  // 인증 삭제
+  Future<void> deleteVerification(String challengeId, String verificationId) async {
+    final challenge = await getChallenge(challengeId);
+    if (challenge != null) {
+      final updatedVerifications = challenge.verifications
+          .where((v) => v.id != verificationId)
+          .toList();
+      final updatedChallenge = challenge.copyWith(
+        verifications: updatedVerifications,
+      );
+      await updateChallenge(updatedChallenge);
+    }
+  }
+
   // 챌린지 가져오기
   Future<Challenge?> getChallenge(String challengeId) async {
     final doc = await _db.collection('challenges').doc(challengeId).get();
@@ -340,6 +355,20 @@ class FirestoreService {
 
   // 챌린지 참가 신청
   Future<void> requestJoinChallenge(String challengeId, String userId) async {
+    // 종료된 챌린지인지 확인
+    final challenge = await getChallenge(challengeId);
+    if (challenge != null && challenge.endDate != null) {
+      final now = DateTime.now();
+      final endDate = challenge.endDate!;
+      final endDateOnly = DateTime(endDate.year, endDate.month, endDate.day);
+      final todayOnly = DateTime(now.year, now.month, now.day);
+      
+      // endDate가 오늘 날짜 이전이거나 같으면 종료된 것으로 간주
+      if (!endDateOnly.isAfter(todayOnly)) {
+        throw Exception('종료된 챌린지에는 참가할 수 없습니다');
+      }
+    }
+    
     await _db.collection('challenges').doc(challengeId).update({
       'pendingParticipantIds': FieldValue.arrayUnion([userId]),
     });
@@ -367,6 +396,20 @@ class FirestoreService {
 
   // 공개 챌린지 참가 (즉시 참가)
   Future<void> joinPublicChallenge(String challengeId, String userId) async {
+    // 종료된 챌린지인지 확인
+    final challenge = await getChallenge(challengeId);
+    if (challenge != null && challenge.endDate != null) {
+      final now = DateTime.now();
+      final endDate = challenge.endDate!;
+      final endDateOnly = DateTime(endDate.year, endDate.month, endDate.day);
+      final todayOnly = DateTime(now.year, now.month, now.day);
+      
+      // endDate가 오늘 날짜 이전이거나 같으면 종료된 것으로 간주
+      if (!endDateOnly.isAfter(todayOnly)) {
+        throw Exception('종료된 챌린지에는 참가할 수 없습니다');
+      }
+    }
+    
     await _db.collection('challenges').doc(challengeId).update({
       'participantIds': FieldValue.arrayUnion([userId]),
     });
@@ -503,6 +546,54 @@ class FirestoreService {
         .get();
     
     return snapshot.docs.length;
+  }
+
+  // ==================== 인증 알림 관련 ====================
+
+  // 인증 알림 생성
+  Future<void> createVerificationNotification(VerificationNotification notification) async {
+    await _db.collection('verificationNotifications').doc(notification.id).set(notification.toJson());
+  }
+
+  // 읽지 않은 인증 알림 목록 (실시간)
+  Stream<List<VerificationNotification>> unreadVerificationNotifications(String userId) {
+    return _db
+        .collection('verificationNotifications')
+        .where('toUserId', isEqualTo: userId)
+        .where('isRead', isEqualTo: false)
+        .snapshots()
+        .map((snapshot) {
+          final notifications = snapshot.docs
+              .map((doc) {
+                try {
+                  final data = doc.data();
+                  data['id'] = doc.id;
+                  return VerificationNotification.fromJson(data);
+                } catch (e) {
+                  print('⚠️ VerificationNotification 파싱 오류: $e, doc.id: ${doc.id}');
+                  return null;
+                }
+              })
+              .where((n) => n != null)
+              .cast<VerificationNotification>()
+              .toList();
+          
+          // 클라이언트에서 정렬 (인덱스 필요 없음)
+          notifications.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+          return notifications;
+        });
+  }
+
+  // 인증 알림 읽음 처리
+  Future<void> markVerificationNotificationAsRead(String notificationId) async {
+    await _db.collection('verificationNotifications').doc(notificationId).update({
+      'isRead': true,
+    });
+  }
+
+  // 인증 알림 삭제 (확인 후 제거)
+  Future<void> deleteVerificationNotification(String notificationId) async {
+    await _db.collection('verificationNotifications').doc(notificationId).delete();
   }
 }
 

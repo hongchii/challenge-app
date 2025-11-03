@@ -188,6 +188,26 @@ class ChallengeDetailScreen extends StatelessWidget {
       return;
     }
 
+    // 종료된 챌린지인지 확인
+    if (challenge.endDate != null) {
+      final now = DateTime.now();
+      final endDate = challenge.endDate!;
+      // endDate가 오늘 날짜 이전이거나 같으면 종료된 것으로 간주
+      final endDateOnly = DateTime(endDate.year, endDate.month, endDate.day);
+      final todayOnly = DateTime(now.year, now.month, now.day);
+      
+      // isBefore 또는 같으면 종료된 것으로 간주
+      if (!endDateOnly.isAfter(todayOnly)) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('종료된 챌린지에는 참가할 수 없습니다'),
+            backgroundColor: Color(0xFFFF5247),
+          ),
+        );
+        return;
+      }
+    }
+
     // 이미 참가 신청 중인지 확인
     if (challenge.pendingParticipantIds.contains(userId)) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -386,24 +406,41 @@ class ChallengeDetailScreen extends StatelessWidget {
         ),
       ]);
     }
-    // 참가자가 아닌 경우: 참가 신청
+    // 참가자가 아닌 경우: 참가 신청 (종료된 챌린지 제외)
     else if (!isMember) {
+      // 종료된 챌린지 확인
+      final now = DateTime.now();
+      final isEnded = challenge.endDate != null &&
+          !DateTime(challenge.endDate!.year, challenge.endDate!.month, challenge.endDate!.day)
+              .isAfter(DateTime(now.year, now.month, now.day));
+      
       menuItems.add(
         ListTile(
           contentPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-          leading: const Icon(Icons.person_add, color: Color(0xFF3182F6), size: 24),
-          title: const Text(
-            '참가 신청',
-            style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
+          leading: Icon(
+            Icons.person_add,
+            color: isEnded ? const Color(0xFF8B95A1) : const Color(0xFF3182F6),
+            size: 24,
           ),
-          onTap: () {
-            Navigator.pop(context);
-            Future.delayed(const Duration(milliseconds: 300), () {
-              if (parentContext.mounted) {
-                _requestJoinChallenge(parentContext, challenge, currentUserId);
-              }
-            });
-          },
+          title: Text(
+            '참가 신청',
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.w500,
+              color: isEnded ? const Color(0xFF8B95A1) : const Color(0xFF191F28),
+            ),
+          ),
+          enabled: !isEnded,
+          onTap: isEnded
+              ? null
+              : () {
+                  Navigator.pop(context);
+                  Future.delayed(const Duration(milliseconds: 300), () {
+                    if (parentContext.mounted) {
+                      _requestJoinChallenge(parentContext, challenge, currentUserId);
+                    }
+                  });
+                },
         ),
       );
     }
@@ -1257,6 +1294,7 @@ class _VerificationItem extends StatelessWidget {
                 MaterialPageRoute(
                   builder: (context) => VerificationDetailScreen(
                     verification: verificationObj!,
+                    challengeId: challengeId,
                   ),
                 ),
               );

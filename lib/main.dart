@@ -5,6 +5,7 @@ import 'package:firebase_core/firebase_core.dart';
 import 'firebase_options.dart';
 import 'providers/challenge_provider.dart';
 import 'providers/auth_provider.dart';
+import 'services/notification_service.dart';
 import 'screens/splash_screen.dart';
 
 void main() async {
@@ -21,11 +22,36 @@ void main() async {
     print('⚠️ Mock 모드로 실행됩니다. UI만 테스트 가능합니다.');
   }
   
+  // 알림 서비스 초기화
+  try {
+    await NotificationService().initialize();
+    print('✅ 알림 서비스 초기화 성공!');
+  } catch (e) {
+    print('❌ 알림 서비스 초기화 실패: $e');
+  }
+  
   runApp(const MyApp());
 }
 
-class MyApp extends StatelessWidget {
+// 전역 네비게이터 키 (알림 클릭 시 네비게이션용)
+final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
+
+class MyApp extends StatefulWidget {
   const MyApp({super.key});
+
+  @override
+  State<MyApp> createState() => _MyAppState();
+}
+
+class _MyAppState extends State<MyApp> {
+  String? _previousUserId;
+
+  @override
+  void initState() {
+    super.initState();
+    // 전역 네비게이터 키를 알림 서비스에 설정
+    NotificationService.navigatorKey = navigatorKey;
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -36,7 +62,18 @@ class MyApp extends StatelessWidget {
           ],
           child: Consumer<AuthProvider>(
             builder: (context, authProvider, _) {
+              // 로그인 상태 변경 감지하여 알림 리스너 시작/중지
+              final currentUserId = authProvider.userModel?.id;
+              if (_previousUserId != currentUserId) {
+                WidgetsBinding.instance.addPostFrameCallback((_) {
+                  print('🔔 사용자 변경 감지: $_previousUserId -> $currentUserId');
+                  _handleAuthStateChange(authProvider);
+                  _previousUserId = currentUserId;
+                });
+              }
+              
           return MaterialApp(
+            navigatorKey: navigatorKey,
             title: '챌린지',
             locale: const Locale('ko', 'KR'),
             localizationsDelegates: [
@@ -135,5 +172,19 @@ class MyApp extends StatelessWidget {
         },
       ),
     );
+  }
+  
+  // 인증 상태 변경 처리
+  void _handleAuthStateChange(AuthProvider authProvider) {
+    final userId = authProvider.userModel?.id;
+    final notificationService = NotificationService();
+    
+    if (userId != null) {
+      // 로그인한 경우 알림 리스너 시작
+      notificationService.startListeningForVerifications(userId);
+    } else {
+      // 로그아웃한 경우 알림 리스너 중지
+      notificationService.stopListening();
+    }
   }
 }
