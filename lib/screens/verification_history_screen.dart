@@ -63,21 +63,6 @@ class _VerificationHistoryScreenState extends State<VerificationHistoryScreen> {
     return '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
   }
 
-  // 특정 날짜의 인증 목록 가져오기
-  List<Verification> _getVerificationsForDate(DateTime date) {
-    return widget.challenge.verifications.where((v) {
-      final verificationDate = DateTime(v.dateTime.year, v.dateTime.month, v.dateTime.day);
-      final targetDate = DateTime(date.year, date.month, date.day);
-      return verificationDate.isAtSameMomentAs(targetDate);
-    }).toList()
-      ..sort((a, b) => b.dateTime.compareTo(a.dateTime));
-  }
-
-  // 달력 이벤트 표시용
-  List<Verification> _getEventsForDay(DateTime day) {
-    return _getVerificationsForDate(day);
-  }
-
   // 해당 월의 인증 목록 가져오기
   List<Verification> _getVerificationsForMonth(DateTime month) {
     return widget.challenge.verifications.where((v) {
@@ -270,12 +255,7 @@ class _VerificationHistoryScreenState extends State<VerificationHistoryScreen> {
                   color: const Color(0xFF3182F6),
                   shape: BoxShape.circle,
                 ),
-                markerDecoration: const BoxDecoration(
-                  color: Color(0xFFFFD700), // 노란색 점
-                  shape: BoxShape.circle,
-                ),
-                markersMaxCount: 1,
-                markerSize: 6,
+                // 마커 관련 설정 제거 (커스텀 빌더에서 직접 처리하므로)
                 outsideTextStyle: TextStyle(
                   color: Colors.grey[400],
                 ),
@@ -307,7 +287,7 @@ class _VerificationHistoryScreenState extends State<VerificationHistoryScreen> {
               locale: 'ko_KR',
               // 요일 헤더 커스터마이징
               daysOfWeekHeight: 40,
-              eventLoader: _getEventsForDay,
+              // eventLoader를 제거하여 기본 마커가 표시되지 않도록 함 (커스텀 빌더에서 직접 처리)
               onDaySelected: (selectedDay, focusedDay) {
                 setState(() {
                   _selectedDay = selectedDay;
@@ -334,17 +314,22 @@ class _VerificationHistoryScreenState extends State<VerificationHistoryScreen> {
                     child: Stack(
                       alignment: Alignment.center,
                       children: [
-                        Text(
-                          '${date.day}',
-                          style: TextStyle(
-                            color: date.weekday == DateTime.sunday
-                                ? const Color(0xFFFF5247)
-                                : date.weekday == DateTime.saturday
-                                    ? const Color(0xFF3182F6)
-                                    : const Color(0xFF191F28),
-                            fontSize: 13,
+                        // 숫자를 위쪽에 배치
+                        Positioned(
+                          top: 8,
+                          child: Text(
+                            '${date.day}',
+                            style: TextStyle(
+                              color: date.weekday == DateTime.sunday
+                                  ? const Color(0xFFFF5247)
+                                  : date.weekday == DateTime.saturday
+                                      ? const Color(0xFF3182F6)
+                                      : const Color(0xFF191F28),
+                              fontSize: 13,
+                            ),
                           ),
                         ),
+                        // 노란 점을 아래쪽에 고정
                         if (isVerificationDay)
                           Positioned(
                             bottom: 3,
@@ -393,6 +378,7 @@ class _VerificationHistoryScreenState extends State<VerificationHistoryScreen> {
                             ),
                           ),
                         ),
+                        // 노란 점을 아래쪽에 고정
                         if (isVerificationDay)
                           Positioned(
                             bottom: 3,
@@ -437,6 +423,7 @@ class _VerificationHistoryScreenState extends State<VerificationHistoryScreen> {
                             ),
                           ),
                         ),
+                        // 노란 점을 아래쪽에 고정
                         if (isVerificationDay)
                           Positioned(
                             bottom: 3,
