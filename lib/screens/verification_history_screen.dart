@@ -71,6 +71,16 @@ class _VerificationHistoryScreenState extends State<VerificationHistoryScreen> {
       ..sort((a, b) => b.dateTime.compareTo(a.dateTime));
   }
 
+  // 선택된 날짜의 인증 목록 가져오기
+  List<Verification> _getVerificationsForDay(DateTime day) {
+    return widget.challenge.verifications.where((v) {
+      return v.dateTime.year == day.year &&
+          v.dateTime.month == day.month &&
+          v.dateTime.day == day.day;
+    }).toList()
+      ..sort((a, b) => b.dateTime.compareTo(a.dateTime));
+  }
+
   @override
   Widget build(BuildContext context) {
     // 참가자 확인
@@ -144,7 +154,7 @@ class _VerificationHistoryScreenState extends State<VerificationHistoryScreen> {
     }
 
     final verificationDates = _getVerificationDates();
-    final monthVerifications = _getVerificationsForMonth(_focusedDay);
+    final selectedDayVerifications = _getVerificationsForDay(_selectedDay);
 
     return Scaffold(
       backgroundColor: const Color(0xFFF9FAFB), // 흰색 배경
@@ -165,57 +175,9 @@ class _VerificationHistoryScreenState extends State<VerificationHistoryScreen> {
       ),
       body: Column(
         children: [
-          // 챌린지 요약 박스
-          Container(
-            padding: const EdgeInsets.all(16),
-            margin: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              gradient: const LinearGradient(
-                colors: [Color(0xFF3182F6), Color(0xFF1B64DA)],
-              ),
-              borderRadius: BorderRadius.circular(16),
-            ),
-            child: Row(
-              children: [
-                const Icon(
-                  Icons.emoji_events,
-                  color: Colors.white,
-                  size: 32,
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text(
-                        '인증하기',
-                        style: TextStyle(
-                          color: Colors.white70,
-                          fontSize: 12,
-                        ),
-                      ),
-                      Text(
-                        widget.challenge.title,
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                        ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
-
-          const SizedBox(height: 8),
-
           // 달력
           Container(
-            margin: const EdgeInsets.symmetric(horizontal: 16),
+            margin: const EdgeInsets.fromLTRB(16, 16, 16, 0),
             decoration: BoxDecoration(
               color: Colors.white,
               borderRadius: BorderRadius.circular(12),
@@ -468,7 +430,7 @@ class _VerificationHistoryScreenState extends State<VerificationHistoryScreen> {
                   ),
                 ],
               ),
-              child: monthVerifications.isEmpty
+              child: selectedDayVerifications.isEmpty
                   ? Center(
                       child: Column(
                         mainAxisAlignment: MainAxisAlignment.center,
@@ -480,7 +442,7 @@ class _VerificationHistoryScreenState extends State<VerificationHistoryScreen> {
                           ),
                           const SizedBox(height: 12),
                           Text(
-                            '이번 달 인증 기록이 없습니다',
+                            '선택한 날짜에 인증 기록이 없습니다',
                             style: TextStyle(
                               color: Colors.grey[500],
                               fontSize: 14,
@@ -491,9 +453,9 @@ class _VerificationHistoryScreenState extends State<VerificationHistoryScreen> {
                     )
                   : ListView.builder(
                       padding: const EdgeInsets.all(12),
-                      itemCount: monthVerifications.length,
+                      itemCount: selectedDayVerifications.length,
                       itemBuilder: (context, index) {
-                        final verification = monthVerifications[index];
+                        final verification = selectedDayVerifications[index];
                         return _VerificationListItem(
                           verification: verification,
                           challengeId: widget.challengeId,
