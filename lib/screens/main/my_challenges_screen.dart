@@ -7,6 +7,7 @@ import '../../services/firestore_service.dart';
 import '../../models/challenge.dart';
 import '../challenge_detail_screen.dart';
 import '../challenge_invitations_screen.dart';
+import '../create_challenge_screen.dart';
 
 class MyChallengesScreen extends StatelessWidget {
   const MyChallengesScreen({super.key});
@@ -111,6 +112,18 @@ class MyChallengesScreen extends StatelessWidget {
             },
           );
         },
+      ),
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => const CreateChallengeScreen(),
+            ),
+          );
+        },
+        icon: const Icon(Icons.add),
+        label: const Text('새 챌린지'),
       ),
     );
   }

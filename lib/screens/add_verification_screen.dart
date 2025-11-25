@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:typed_data';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -9,6 +10,7 @@ import '../services/firestore_service.dart';
 import '../services/storage_service.dart';
 import '../models/verification.dart';
 import '../utils/text_encoding.dart';
+import '../utils/image_timestamp.dart';
 
 class AddVerificationScreen extends StatefulWidget {
   final String challengeId;
@@ -51,14 +53,40 @@ class _AddVerificationScreenState extends State<AddVerificationScreen> {
       if (image != null) {
         if (kIsWeb) {
           // Web: bytes로 읽기
-          final bytes = await image.readAsBytes();
+          var bytes = await image.readAsBytes();
+          
+          // 카메라로 촬영한 경우에만 타임스탬프 추가 (중앙에 표시)
+          if (source == ImageSource.camera) {
+            debugPrint('📸 카메라로 촬영 - 타임스탬프 추가 시작 (중앙)');
+            try {
+              bytes = await ImageTimestamp.addTimestamp(
+                bytes,
+                position: 'center',
+              );
+              debugPrint('✅ 타임스탬프 추가 완료');
+            } catch (e) {
+              debugPrint('❌ 타임스탬프 추가 실패: $e');
+              // 오류가 발생해도 계속 진행
+            }
+          }
+          
           setState(() {
             _webImage = bytes;
           });
         } else {
           // Mobile/Desktop: File로 읽기
+          File imageFile = File(image.path);
+          
+          // 카메라로 촬영한 경우에만 타임스탬프 추가 (중앙에 표시)
+          if (source == ImageSource.camera) {
+            imageFile = await ImageTimestamp.addTimestampToFile(
+              imageFile,
+              position: 'center',
+            );
+          }
+          
           setState(() {
-            _selectedImage = File(image.path);
+            _selectedImage = imageFile;
           });
         }
       }
@@ -99,6 +127,10 @@ class _AddVerificationScreenState extends State<AddVerificationScreen> {
                   '카메라로 촬영',
                   style: TextStyle(fontWeight: FontWeight.w600),
                 ),
+                subtitle: const Text(
+                  '📅 날짜/시간이 자동으로 추가됩니다',
+                  style: TextStyle(fontSize: 12, color: Color(0xFF3182F6)),
+                ),
                 onTap: () {
                   Navigator.pop(context);
                   _pickImage(ImageSource.camera);
@@ -116,6 +148,10 @@ class _AddVerificationScreenState extends State<AddVerificationScreen> {
                 title: const Text(
                   '갤러리에서 선택',
                   style: TextStyle(fontWeight: FontWeight.w600),
+                ),
+                subtitle: const Text(
+                  '기존 사진 선택 (타임스탬프 없음)',
+                  style: TextStyle(fontSize: 12, color: Color(0xFF8B95A1)),
                 ),
                 onTap: () {
                   Navigator.pop(context);
@@ -410,3 +446,4 @@ class _AddVerificationScreenState extends State<AddVerificationScreen> {
     );
   }
 }
+
